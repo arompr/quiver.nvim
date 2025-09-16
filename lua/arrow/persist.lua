@@ -1,5 +1,6 @@
 local M = {}
 
+local in_memory_storage = require("arrow.persistence.in_memory_storage")
 local config = require("arrow.config")
 local utils = require("arrow.utils")
 local git = require("arrow.git")
@@ -38,29 +39,19 @@ local function notify()
 	})
 end
 
-vim.g.arrow_filenames = {}
-
 function M.save(filename)
-	if not M.is_saved(filename) then
-		local new_table = vim.g.arrow_filenames
-		table.insert(new_table, filename)
-		vim.g.arrow_filenames = new_table
-
+	if not in_memory_storage.is_saved(filename) then
+		in_memory_storage.save(filename)
 		M.cache_file()
-		M.load_cache_file()
 	end
 	notify()
 end
 
 function M.remove(filename)
-	local index = M.is_saved(filename)
+	local index = in_memory_storage.is_saved(filename)
 	if index then
-		local new_table = vim.g.arrow_filenames
-		table.remove(new_table, index)
-		vim.g.arrow_filenames = new_table
-
+		in_memory_storage.remove(index)
 		M.cache_file()
-		M.load_cache_file()
 	end
 	notify()
 end
@@ -70,7 +61,8 @@ function M.toggle(filename)
 
 	filename = filename or utils.get_current_buffer_path()
 
-	local index = M.is_saved(filename)
+	local index = in_memory_storage.is_saved(filename)
+	print(index)
 	if index then
 		M.remove(filename)
 	else
@@ -80,56 +72,38 @@ function M.toggle(filename)
 end
 
 function M.clear()
-	vim.g.arrow_filenames = {}
+	in_memory_storage.clear()
 	M.cache_file()
-	M.load_cache_file()
 	notify()
-end
-
-function M.is_saved(filename)
-	for i, name in ipairs(vim.g.arrow_filenames) do
-		if config.getState("relative_path") == true and config.getState("global_bookmarks") == false then
-			if not name:match("^%./") and not utils.string_contains_whitespace(name) then
-				name = "./" .. name
-			end
-
-			if not filename:match("^%./") and not utils.string_contains_whitespace(filename) then
-				filename = "./" .. filename
-			end
-		end
-
-		if name == filename then
-			return i
-		end
-	end
-	return nil
 end
 
 function M.load_cache_file()
 	local cache_path = cache_file_path()
 
 	if vim.fn.filereadable(cache_path) == 0 then
-		vim.g.arrow_filenames = {}
+		in_memory_storage.clear()
 
 		return
 	end
 
 	local success, data = pcall(vim.fn.readfile, cache_path)
 	if success then
-		vim.g.arrow_filenames = data
+		print(vim.inspect(data))
+		in_memory_storage.build(data)
+		print(vim.inspect(in_memory_storage.get_all()))
 	else
-		vim.g.arrow_filenames = {}
+		in_memory_storage.clear()
 	end
 end
 
 function M.cache_file()
-	local content = vim.fn.join(vim.g.arrow_filenames, "\n")
+	local content = table.concat(in_memory_storage.get_all(), "\n")
 	local lines = vim.fn.split(content, "\n")
 	vim.fn.writefile(lines, cache_file_path())
 end
 
 function M.go_to(index)
-	local filename = vim.g.arrow_filenames[index]
+	local filename = in_memory_storage.fetch_by_index(index)
 
 	if not filename then
 		return
@@ -149,10 +123,10 @@ end
 function M.next()
 	git.refresh_git_branch()
 
-	local current_index = M.is_saved(utils.get_current_buffer_path())
+	local current_index = in_memory_storage.is_saved(utils.get_current_buffer_path())
 	local next_index
 
-	if current_index and current_index < #vim.g.arrow_filenames then
+	if current_index and current_index < #in_memory_storage.get_all() then
 		next_index = current_index + 1
 	else
 		next_index = 1
@@ -164,15 +138,15 @@ end
 function M.previous()
 	git.refresh_git_branch()
 
-	local current_index = M.is_saved(utils.get_current_buffer_path())
+	local current_index = in_memory_storage.is_saved(utils.get_current_buffer_path())
 	local previous_index
 
 	if current_index and current_index == 1 then
-		previous_index = #vim.g.arrow_filenames
+		previous_index = #in_memory_storage.get_all()
 	elseif current_index then
 		previous_index = current_index - 1
 	else
-		previous_index = #vim.g.arrow_filenames
+		previous_index = #in_memory_storage.get_all()
 	end
 
 	M.go_to(previous_index)
@@ -241,13 +215,20 @@ function M.open_cache_file()
 		callback = function()
 			local updated_content = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 			vim.fn.writefile(updated_content, cache_path)
-			M.load_cache_file()
 		end,
 	})
 
 	vim.cmd("setlocal nu")
 
 	return bufnr, winid
+end
+
+function M.get_arrow_filenames()
+	return in_memory_storage.get_all()
+end
+
+function M.fetch_by_index(index)
+	return in_memory_storage.fetch_by_index(index)
 end
 
 return M
