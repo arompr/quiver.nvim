@@ -1,15 +1,18 @@
-# arrow.nvim
+# quiver.nvim -- WIP
 
-Arrow.nvim is a plugin made to bookmarks files (like harpoon) using a single UI (and single keymap). 
+> A fork of [arrow.nvim](https://github.com/otavioschwanck/arrow.nvim) that adds **specific key-to-file mappings**, inspired by [harpoon](https://github.com/ThePrimeagen/harpoon), while keeping Arrow’s clean UI and workflow.
 
-Arrow can be customized for everyone needs.
+I loved using [arrow.nvim](https://github.com/otavioschwanck/arrow.nvim) — it’s elegant, minimal, and makes managing file bookmarks seamless.  
+But in large codebases, I ran into one small problem:
 
-Arrow also provides per buffer bookmarks that will can quickly jump to them. (And their position is automatically updated / persisted while you modify the file)
+- Arrow is **index-based**, so when I rearranged my files, the key assignments would shift.  
+- The result: files I kept ended up on a different key than the one I got used to.  
 
-### Per Project / Global bookmarksL:
-![arrow.nvim](https://i.imgur.com/mPdSC5s.png)
-![arrow.nvim_gif](https://i.imgur.com/LcvG406.gif)
-![arrow_buffers](https://i.imgur.com/Lll9YvY.gif)
+That’s why I created **quiver.nvim**:
+
+- It extends Arrow’s functionality with the ability to **map specific keys directly to files**.  
+- This means that, like Harpoon, you can bind a file to a particular letter (`a`, `s`, `d`, etc.) while still benefiting from Arrow’s lightweight single-UI experience.  
+- If you don’t care about fixed keys, Arrow is probably what you are looking for.  
 
 ## Installation
 
@@ -47,6 +50,9 @@ end }
 
 Just press the leader_key set on setup and follow you heart. (Is that easy)
 
+## Difference from arrow:
+
+- Key-to-file mapping: Assign specific files to specific keys, avoiding accidental shifts when rearranging bookmarks.
 ## Differences from harpoon:
 
 - Single keymap needed
@@ -205,30 +211,6 @@ end
 
 </details>
 
-## Highlights
-
-- ArrowFileIndex
-- ArrowCurrentFile
-- ArrowAction
-- ArrowDeleteMode
-
-## Working with sessions plugins
-
-If you have any error using arrow with a session plugin,
-like on mini.sessions, add this to the post load session hook:
-
-```lua
-require("arrow.git").refresh_git_branch() -- only if separated_by_branch is true
-require("arrow.persist").load_cache_file()
-```
-
-Obs: persistence.nvim works fine with arrow.
-
-## Special Contributors
-
-- ![xzbdmw](https://github.com/xzbdmw) - Had the idea of per buffer bookmarks and
-helped me to implement it.
-
-### Do you like my work? Please, buy me a coffee
+### Please, buy otavioschwanck, the original arrow dev a coffee
 
 https://www.buymeacoffee.com/otavioschwanck
