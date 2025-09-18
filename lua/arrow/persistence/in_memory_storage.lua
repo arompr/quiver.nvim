@@ -7,35 +7,33 @@ local config = require("arrow.config")
 local M = {}
 
 ---@type Bookmark[]
-local arrow_filenames = {}
+local in_memory_arrows = {}
 
-function M.build(filenames)
-	arrow_filenames = filenames
+function M.set_arrows(arrows)
+	arrows = arrows
 end
 
-function M.save(filename)
-	if not M.is_saved(filename) then
-		table.insert(arrow_filenames, filename)
+---@param arrow Bookmark
+function M.save(arrow)
+	if not M.is_saved(arrow) then
+		table.insert(in_memory_arrows, arrow)
 	end
 end
 
-function M.remove(index)
-	table.remove(arrow_filenames, index)
+function M.remove(arrow)
+	local index = M.is_saved(arrow)
+	if index then
+		M.remove_at(index)
+	end
 end
 
--- Normalize filenames according to config
-local function normalize_filename(filename)
-	if config.getState("relative_path") and not config.getState("global_bookmarks") then
-		if not filename:match("^%./") and not utils.string_contains_whitespace(filename) then
-			return "./" .. filename
-		end
-	end
-	return filename
+function M.remove_at(index)
+	table.remove(in_memory_arrows, index)
 end
 
 -- Check if a filename is saved, return its index or nil
 function M.is_saved(filename)
-	for i, name in ipairs(arrow_filenames) do
+	for i, name in ipairs(in_memory_arrows) do
 		if config.getState("relative_path") == true and config.getState("global_bookmarks") == false then
 			if not name:match("^%./") and not utils.string_contains_whitespace(name) then
 				name = "./" .. name
@@ -54,20 +52,20 @@ function M.is_saved(filename)
 end
 
 function M.clear()
-	arrow_filenames = {}
+	in_memory_arrows = {}
 end
 
 -- Expose a read-only copy
-function M.get_all()
+function M.fetch_arrows()
 	local copy = {}
-	for i, entry in ipairs(arrow_filenames) do
+	for i, entry in ipairs(in_memory_arrows) do
 		copy[i] = entry
 	end
 	return copy
 end
 
 function M.fetch_by_index(index)
-	return arrow_filenames[index]
+	return in_memory_arrows[index]
 end
 
 return M

@@ -1,6 +1,9 @@
 local M = {}
 
 local in_memory_storage = require("arrow.persistence.in_memory_storage")
+local file_storage = require("arrow.persistence.file_storage")
+local cache_quiver = require("arrow.persistence.cache_quiver")
+
 local config = require("arrow.config")
 local utils = require("arrow.utils")
 local git = require("arrow.git")
@@ -40,18 +43,16 @@ local function notify()
 end
 
 function M.save(filename)
-	if not in_memory_storage.is_saved(filename) then
-		in_memory_storage.save(filename)
-		M.cache_file()
-	end
+	cache_quiver.save(filename)
+	cache_quiver.persist_arrows()
 	notify()
 end
 
 function M.remove(filename)
 	local index = in_memory_storage.is_saved(filename)
 	if index then
-		in_memory_storage.remove(index)
-		M.cache_file()
+		in_memory_storage.remove_at(index)
+		file_storage.persist()
 	end
 	notify()
 end
@@ -62,7 +63,6 @@ function M.toggle(filename)
 	filename = filename or utils.get_current_buffer_path()
 
 	local index = in_memory_storage.is_saved(filename)
-	print(index)
 	if index then
 		M.remove(filename)
 	else
@@ -72,8 +72,8 @@ function M.toggle(filename)
 end
 
 function M.clear()
-	in_memory_storage.clear()
-	M.cache_file()
+	cache_quiver.clear_arrows()
+	cache_quiver.persist_arrows()
 	notify()
 end
 
@@ -81,25 +81,18 @@ function M.load_cache_file()
 	local cache_path = cache_file_path()
 
 	if vim.fn.filereadable(cache_path) == 0 then
-		in_memory_storage.clear()
+		cache_quiver.clear_arrows()
 
 		return
 	end
 
 	local success, data = pcall(vim.fn.readfile, cache_path)
 	if success then
-		print(vim.inspect(data))
-		in_memory_storage.build(data)
-		print(vim.inspect(in_memory_storage.get_all()))
+		-- cache_quiver.remove
+		in_memory_storage.set_arrows(data)
 	else
-		in_memory_storage.clear()
+		cache_quiver.clear_arrows()
 	end
-end
-
-function M.cache_file()
-	local content = table.concat(in_memory_storage.get_all(), "\n")
-	local lines = vim.fn.split(content, "\n")
-	vim.fn.writefile(lines, cache_file_path())
 end
 
 function M.go_to(index)
@@ -126,7 +119,7 @@ function M.next()
 	local current_index = in_memory_storage.is_saved(utils.get_current_buffer_path())
 	local next_index
 
-	if current_index and current_index < #in_memory_storage.get_all() then
+	if current_index and current_index < #in_memory_storage.fetch_arrows() then
 		next_index = current_index + 1
 	else
 		next_index = 1
@@ -142,11 +135,11 @@ function M.previous()
 	local previous_index
 
 	if current_index and current_index == 1 then
-		previous_index = #in_memory_storage.get_all()
+		previous_index = #in_memory_storage.fetch_arrows()
 	elseif current_index then
 		previous_index = current_index - 1
 	else
-		previous_index = #in_memory_storage.get_all()
+		previous_index = #in_memory_storage.fetch_arrows()
 	end
 
 	M.go_to(previous_index)
@@ -215,6 +208,7 @@ function M.open_cache_file()
 		callback = function()
 			local updated_content = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 			vim.fn.writefile(updated_content, cache_path)
+			M.load_cache_file()
 		end,
 	})
 
@@ -224,11 +218,11 @@ function M.open_cache_file()
 end
 
 function M.get_arrow_filenames()
-	return in_memory_storage.get_all()
+	return cache_quiver.fetch_arrows()
 end
 
 function M.fetch_by_index(index)
-	return in_memory_storage.fetch_by_index(index)
+	return cache_quiver.fetch_by_index(index)
 end
 
 return M

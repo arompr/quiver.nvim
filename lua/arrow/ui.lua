@@ -412,9 +412,9 @@ function M.openMenu(bufnr)
 
 	local call_buffer = bufnr or vim.api.nvim_get_current_buf()
 
-	if persist.get_arrow_filenames() == 0 then
-		persist.load_cache_file()
-	end
+	-- if persist.get_arrow_filenames() == 0 then
+	-- 	persist.load_cache_file()
+	-- end
 
 	to_highlight = {}
 	filenames = persist.get_arrow_filenames()
