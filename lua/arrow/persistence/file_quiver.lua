@@ -1,6 +1,6 @@
 local M = {}
 
-local in_memory_storage = require("arrow.persistence.in_memory_storage")
+local in_memory_storage = require("arrow.persistence.in_memory_quiver")
 local config = require("arrow.config")
 local utils = require("arrow.utils")
 local git = require("arrow.git")
@@ -33,12 +33,6 @@ local function cache_file_path()
 	return save_path .. "/" .. save_key()
 end
 
-function M.persist()
-	local content = table.concat(in_memory_storage.fetch_arrows(), "\n")
-	local lines = vim.fn.split(content, "\n")
-	vim.fn.writefile(lines, cache_file_path())
-end
-
 function M.fetch_arrows()
 	local cache_path = cache_file_path()
 
@@ -53,29 +47,6 @@ function M.fetch_arrows()
 	else
 		return {}
 	end
-end
-
-function M.load_cache_file()
-	local cache_path = cache_file_path()
-
-	if vim.fn.filereadable(cache_path) == 0 then
-		in_memory_storage.clear()
-
-		return
-	end
-
-	local success, data = pcall(vim.fn.readfile, cache_path)
-	if success then
-		in_memory_storage.set_arrows(data)
-	else
-		in_memory_storage.clear()
-	end
-end
-
-function M.cache_file()
-	local content = table.concat(in_memory_storage.fetch_arrows(), "\n")
-	local lines = vim.fn.split(content, "\n")
-	vim.fn.writefile(lines, cache_file_path())
 end
 
 function M.save_arrows(arrows)

@@ -2,6 +2,7 @@ local M = {}
 
 local config = require("arrow.config")
 local persist = require("arrow.persist")
+local edit_mode_usecase = require("arrow.usecases.edit_mode_usecase")
 local utils = require("arrow.utils")
 local git = require("arrow.git")
 local icons = require("arrow.integration.icons")
@@ -14,7 +15,7 @@ local current_index = 0
 local function getActionsMenu()
 	local mappings = config.getState("mappings")
 
-	if #persist.get_arrow_filenames() == 0 then
+	if #persist.get_arrows() == 0 then
 		return {
 			string.format("%s Save File", mappings.toggle),
 		}
@@ -187,7 +188,7 @@ local function renderBuffer(buffer)
 	end
 
 	-- Add a separator
-	if #persist.get_arrow_filenames() == 0 then
+	if #persist.get_arrows() == 0 then
 		table.insert(lines, "   No files yet.")
 	end
 
@@ -306,7 +307,7 @@ function M.openFile(fileNumber)
 	if vim.b.arrow_current_mode == "delete_mode" then
 		persist.remove(fileName)
 
-		filenames = persist.get_arrow_filenames()
+		filenames = persist.get_arrows()
 
 		renderBuffer(vim.api.nvim_get_current_buf())
 		render_highlights(vim.api.nvim_get_current_buf())
@@ -379,7 +380,7 @@ function M.getWindowConfig()
 		col = math.ceil((vim.o.columns - width) / 2),
 	}
 
-	local is_empty = #persist.get_arrow_filenames() == 0
+	local is_empty = #persist.get_arrows() == 0
 
 	if is_empty and show_handbook then
 		current_config.height = 5
@@ -412,12 +413,12 @@ function M.openMenu(bufnr)
 
 	local call_buffer = bufnr or vim.api.nvim_get_current_buf()
 
-	-- if persist.get_arrow_filenames() == 0 then
+	-- if persist.get_arrows() == 0 then
 	-- 	persist.load_cache_file()
 	-- end
 
 	to_highlight = {}
-	filenames = persist.get_arrow_filenames()
+	filenames = persist.get_arrows()
 	local filename
 
 	if config.getState("global_bookmarks") == true then
@@ -454,7 +455,7 @@ function M.openMenu(bufnr)
 	vim.keymap.set("n", mappings.quit, closeMenu, menuKeymapOpts)
 	vim.keymap.set("n", mappings.edit, function()
 		closeMenu()
-		persist.open_cache_file()
+		edit_mode_usecase.open_cache_file()
 	end, menuKeymapOpts)
 
 	if separate_save_and_remove then

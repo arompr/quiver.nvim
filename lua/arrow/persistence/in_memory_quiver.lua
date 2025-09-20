@@ -10,18 +10,18 @@ local M = {}
 local in_memory_arrows = {}
 
 function M.set_arrows(arrows)
-	arrows = arrows
+	in_memory_arrows = arrows
 end
 
 ---@param arrow Bookmark
 function M.save(arrow)
-	if not M.is_saved(arrow) then
+	if not M.get_index(arrow) then
 		table.insert(in_memory_arrows, arrow)
 	end
 end
 
 function M.remove(arrow)
-	local index = M.is_saved(arrow)
+	local index = M.get_index(arrow)
 	if index then
 		M.remove_at(index)
 	end
@@ -32,7 +32,7 @@ function M.remove_at(index)
 end
 
 -- Check if a filename is saved, return its index or nil
-function M.is_saved(filename)
+function M.get_index(filename)
 	for i, name in ipairs(in_memory_arrows) do
 		if config.getState("relative_path") == true and config.getState("global_bookmarks") == false then
 			if not name:match("^%./") and not utils.string_contains_whitespace(name) then
