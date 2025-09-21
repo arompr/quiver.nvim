@@ -14,6 +14,7 @@ function M.fetch_arrows()
 		return in_memory_arrows
 	end
 
+	print("went to file storage")
 	local in_file_arrows = file_quiver.fetch_arrows()
 	in_memory_quiver.set_arrows(in_file_arrows)
 

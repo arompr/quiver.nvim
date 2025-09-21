@@ -2,10 +2,14 @@ local M = {}
 
 local config = require("arrow.config")
 local persist = require("arrow.persist")
-local edit_mode_usecase = require("arrow.usecases.edit_mode_usecase")
 local utils = require("arrow.utils")
 local git = require("arrow.git")
 local icons = require("arrow.integration.icons")
+
+local edit_mode_usecase = require("arrow.usecases.edit_mode_usecase")
+local save_arrow_usecase = require("arrow.usecases.save_arrow_usecase")
+local remove_arrow_usecase = require("arrow.usecases.remove_arrow_usecase")
+local toggle_arrow_usecase = require("arrow.usecases.toggle_arrow_usecase")
 
 local filenames = {}
 local to_highlight = {}
@@ -302,17 +306,17 @@ end
 
 -- Function to open the selected file
 function M.openFile(fileNumber)
-	local fileName = persist.fetch_by_index(fileNumber)
+	local filename = persist.fetch_by_index(fileNumber)
 
 	if vim.b.arrow_current_mode == "delete_mode" then
-		persist.remove(fileName)
+		remove_arrow_usecase.remove_arrow(filename)
 
 		filenames = persist.get_arrows()
 
 		renderBuffer(vim.api.nvim_get_current_buf())
 		render_highlights(vim.api.nvim_get_current_buf())
 	else
-		if not fileName then
+		if not filename then
 			print("Invalid file number")
 
 			return
@@ -320,7 +324,7 @@ function M.openFile(fileNumber)
 
 		local action
 
-		fileName = vim.fn.fnameescape(fileName)
+		filename = vim.fn.fnameescape(filename)
 
 		if vim.b.arrow_current_mode == "" or not vim.b.arrow_current_mode then
 			action = config.getState("open_action")
@@ -338,9 +342,9 @@ function M.openFile(fileNumber)
 			or config.getState("save_key_name") == "cwd"
 			or config.getState("save_key_name") == "git_root_bare"
 		then
-			action(fileName, vim.b.filename)
+			action(filename, vim.b.filename)
 		else
-			action(config.getState("save_key_cached") .. "/" .. fileName, vim.b.filename)
+			action(config.getState("save_key_cached") .. "/" .. filename, vim.b.filename)
 		end
 	end
 end
@@ -413,10 +417,6 @@ function M.openMenu(bufnr)
 
 	local call_buffer = bufnr or vim.api.nvim_get_current_buf()
 
-	-- if persist.get_arrows() == 0 then
-	-- 	persist.load_cache_file()
-	-- end
-
 	to_highlight = {}
 	filenames = persist.get_arrows()
 	local filename
@@ -461,20 +461,19 @@ function M.openMenu(bufnr)
 	if separate_save_and_remove then
 		vim.keymap.set("n", mappings.toggle, function()
 			filename = filename or utils.get_current_buffer_path()
-
-			persist.save(filename)
+			save_arrow_usecase.save_arrow(filename)
 			closeMenu()
 		end, menuKeymapOpts)
 
 		vim.keymap.set("n", mappings.remove, function()
 			filename = filename or utils.get_current_buffer_path()
 
-			persist.remove(filename)
+			remove_arrow_usecase.remove_arrow(filename)
 			closeMenu()
 		end, menuKeymapOpts)
 	else
 		vim.keymap.set("n", mappings.toggle, function()
-			persist.toggle(filename)
+			toggle_arrow_usecase.toggle(filename)
 			closeMenu()
 		end, menuKeymapOpts)
 	end
