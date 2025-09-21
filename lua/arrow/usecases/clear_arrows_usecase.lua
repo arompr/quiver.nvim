@@ -3,8 +3,8 @@ local events = require("arrow.events")
 
 local M = {}
 
-function M.save_arrow(filename)
-	cache_quiver.save(filename)
+function M.clear()
+	cache_quiver.clear_arrows()
 	cache_quiver.persist_arrows()
 	events.notify()
 end

@@ -1,9 +1,9 @@
-local M = {}
-
 local git = require("arrow.git")
 local utils = require("arrow.utils")
 local cache_quiver = require("arrow.persistence.cache_quiver")
 local events = require("arrow.events")
+
+local M = {}
 
 function M.toggle(filename)
 	git.refresh_git_branch()

@@ -1,7 +1,6 @@
 local M = {}
 
 local config = require("arrow.config")
--- local cache_quiver = require("arrow.persistence.cache_quiver")
 
 function M.get_git_branch()
 	local git_files = vim.fs.find(".git", { upward = true, stop = vim.loop.os_homedir() })
@@ -22,7 +21,6 @@ function M.refresh_git_branch()
 		if current_branch ~= M.get_git_branch() then
 			config.setState("current_branch", M.get_git_branch())
 			require("arrow.persistence.cache_quiver").clear_arrows()
-			-- require("arrow.persist").load_cache_file()
 		end
 	end
 

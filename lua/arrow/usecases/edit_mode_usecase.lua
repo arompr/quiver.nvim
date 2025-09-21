@@ -1,10 +1,9 @@
-local M = {}
-
 local cache_quiver = require("arrow.persistence.cache_quiver")
-
 local config = require("arrow.config")
 local utils = require("arrow.utils")
 local git = require("arrow.git")
+
+local M = {}
 
 local function save_key()
 	if config.getState("global_bookmarks") == true then

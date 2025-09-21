@@ -3,7 +3,6 @@ local M = {}
 local config = require("arrow.config")
 local utils = require("arrow.utils")
 local ui = require("arrow.ui")
-local persist = require("arrow.persist")
 local buffer_persist = require("arrow.buffer_persist")
 local git = require("arrow.git")
 local commands = require("arrow.commands")
@@ -188,14 +187,11 @@ function M.setup(opts)
 	config.setState("mappings", utils.join_two_keys_tables(default_mappings, opts.mappings or {}))
 	config.setState("full_path_list", utils.join_two_arrays(default_full_path_list, opts.full_path_list or {}))
 
-	-- persist.load_cache_file()
-
 	vim.api.nvim_create_augroup("arrow", { clear = true })
 
 	vim.api.nvim_create_autocmd({ "DirChanged", "SessionLoadPost" }, {
 		callback = function()
 			git.refresh_git_branch()
-			-- persist.load_cache_file()
 			config.setState("save_key_cached", config.getState("save_key")())
 		end,
 		desc = "load cache file on DirChanged",

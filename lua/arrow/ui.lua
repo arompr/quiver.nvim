@@ -1,7 +1,6 @@
 local M = {}
 
 local config = require("arrow.config")
-local persist = require("arrow.persist")
 local utils = require("arrow.utils")
 local git = require("arrow.git")
 local icons = require("arrow.integration.icons")
@@ -10,6 +9,10 @@ local edit_mode_usecase = require("arrow.usecases.edit_mode_usecase")
 local save_arrow_usecase = require("arrow.usecases.save_arrow_usecase")
 local remove_arrow_usecase = require("arrow.usecases.remove_arrow_usecase")
 local toggle_arrow_usecase = require("arrow.usecases.toggle_arrow_usecase")
+local clear_arrows_usecase = require("arrow.usecases.clear_arrows_usecase")
+local go_to_previous_arrow_usecase = require("arrow.usecases.navigation.go_to_previous_arrow_usecase")
+local go_to_next_arrow_usecase = require("arrow.usecases.navigation.go_to_next_arrow_usecase")
+local get_arrow_usecase = require("arrow.usecases.get_arrow_usecase")
 
 local filenames = {}
 local to_highlight = {}
@@ -19,7 +22,7 @@ local current_index = 0
 local function getActionsMenu()
 	local mappings = config.getState("mappings")
 
-	if #persist.get_arrows() == 0 then
+	if #get_arrow_usecase.get_arrows() == 0 then
 		return {
 			string.format("%s Save File", mappings.toggle),
 		}
@@ -192,7 +195,7 @@ local function renderBuffer(buffer)
 	end
 
 	-- Add a separator
-	if #persist.get_arrows() == 0 then
+	if #get_arrow_usecase.get_arrows() == 0 then
 		table.insert(lines, "   No files yet.")
 	end
 
@@ -306,12 +309,12 @@ end
 
 -- Function to open the selected file
 function M.openFile(fileNumber)
-	local filename = persist.fetch_by_index(fileNumber)
+	local filename = get_arrow_usecase.get_arrow_by_index(fileNumber)
 
 	if vim.b.arrow_current_mode == "delete_mode" then
 		remove_arrow_usecase.remove_arrow(filename)
 
-		filenames = persist.get_arrows()
+		filenames = get_arrow_usecase.get_arrows()
 
 		renderBuffer(vim.api.nvim_get_current_buf())
 		render_highlights(vim.api.nvim_get_current_buf())
@@ -384,7 +387,7 @@ function M.getWindowConfig()
 		col = math.ceil((vim.o.columns - width) / 2),
 	}
 
-	local is_empty = #persist.get_arrows() == 0
+	local is_empty = #get_arrow_usecase.get_arrows() == 0
 
 	if is_empty and show_handbook then
 		current_config.height = 5
@@ -418,7 +421,7 @@ function M.openMenu(bufnr)
 	local call_buffer = bufnr or vim.api.nvim_get_current_buf()
 
 	to_highlight = {}
-	filenames = persist.get_arrows()
+	filenames = get_arrow_usecase.get_arrows()
 	local filename
 
 	if config.getState("global_bookmarks") == true then
@@ -479,18 +482,18 @@ function M.openMenu(bufnr)
 	end
 
 	vim.keymap.set("n", mappings.clear_all_items, function()
-		persist.clear()
+		clear_arrows_usecase.clear()
 		closeMenu()
 	end, menuKeymapOpts)
 
 	vim.keymap.set("n", mappings.next_item, function()
 		closeMenu()
-		persist.next()
+		go_to_next_arrow_usecase.next()
 	end, menuKeymapOpts)
 
 	vim.keymap.set("n", mappings.prev_item, function()
 		closeMenu()
-		persist.previous()
+		go_to_previous_arrow_usecase.previous()
 	end, menuKeymapOpts)
 
 	vim.keymap.set("n", "<Esc>", closeMenu, menuKeymapOpts)
