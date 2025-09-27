@@ -144,7 +144,6 @@ local function format_file_names(file_names)
 	return formatted_names
 end
 
--- Function to close the menu and open the selected file
 local function closeMenu()
 	local win = vim.fn.win_getid()
 	vim.api.nvim_win_close(win, true)
@@ -157,15 +156,29 @@ local function renderBuffer(buffer)
 	local buf = buffer or vim.api.nvim_get_current_buf()
 	local lines = { "" }
 
+	local assignable_keys = config.getState("index_keys")
 	local formattedFilenames = format_file_names(filenames)
 
 	to_highlight = {}
 	current_index = 0
 
+	if vim.b.arrow_current_mode == "save_mode" then
+		for key in assignable_keys:gmatch(".") do
+			vim.keymap.set("n", key, function()
+				local file = vim.b[buf].filename
+				save_arrow_usecase.save_arrow(file)
+				print("Saved file to key " .. key)
+				vim.g.global = "" -- exit save mode
+				closeMenu()
+			end, { noremap = true, silent = true, buffer = buf, nowait = true })
+		end
+	end
+
 	for i, fileName in ipairs(formattedFilenames) do
 		local displayIndex = i
 
-		displayIndex = config.getState("index_keys"):sub(i, i)
+		assignable_keys = config.getState("index_keys")
+		displayIndex = assignable_keys:sub(i, i)
 
 		vim.api.nvim_buf_add_highlight(buf, -1, "ArrowDeleteMode", i + 3, 0, -1)
 
@@ -235,13 +248,26 @@ local function render_highlights(buffer)
 	vim.api.nvim_buf_clear_namespace(buffer, -1, 0, -1)
 	local menuBuf = buffer or vim.api.nvim_get_current_buf()
 
-	vim.api.nvim_buf_add_highlight(menuBuf, -1, "ArrowCurrentFile", current_index, 0, -1)
+	local ns_id = vim.api.nvim_create_namespace("ArrowCurrentFile")
+	local line = vim.api.nvim_buf_get_lines(menuBuf, current_index, current_index + 1, false)[1]
+	vim.api.nvim_buf_set_extmark(menuBuf, ns_id, current_index, 0, {
+		end_col = #line,
+		hl_group = "ArrowCurrentFile",
+	})
 
 	for i, _ in ipairs(filenames) do
 		if vim.b.arrow_current_mode == "delete_mode" then
-			vim.api.nvim_buf_add_highlight(menuBuf, -1, "ArrowDeleteMode", i, 3, 4)
+			ns_id = vim.api.nvim_create_namespace("ArrowDeleteMode")
+			vim.api.nvim_buf_set_extmark(menuBuf, ns_id, i, 3, {
+				end_col = 4,
+				hl_group = "ArrowDeleteMode",
+			})
 		else
-			vim.api.nvim_buf_add_highlight(menuBuf, -1, "ArrowFileIndex", i, 3, 4)
+			ns_id = vim.api.nvim_create_namespace("ArrowFileIndex")
+			vim.api.nvim_buf_set_extmark(menuBuf, ns_id, i, 3, {
+				end_col = 4,
+				hl_group = "ArrowFileIndex",
+			})
 		end
 	end
 
@@ -256,11 +282,16 @@ local function render_highlights(buffer)
 	end
 
 	-- Find the line containing "d - Delete Mode"
+	local saveModeLine = -1
 	local deleteModeLine = -1
 	local verticalModeLine = -1
 	local horizontalModelLine = -1
 
 	for i, action in ipairs(actionsMenu) do
+		if action:find(mappings.toggle .. " Save Current File") then
+			saveModeLine = i - 1
+		end
+
 		if action:find(mappings.delete_mode .. " Delete Mode") then
 			deleteModeLine = i - 1
 		end
@@ -271,6 +302,12 @@ local function render_highlights(buffer)
 
 		if action:find(mappings.open_horizontal .. " Open Horizontal") then
 			horizontalModelLine = i - 1
+		end
+	end
+
+	if saveModeLine >= 0 then
+		if vim.b.arrow_current_mode == "save_mode" then
+			vim.api.nvim_buf_add_highlight(menuBuf, -1, "ArrowSaveMode", #filenames + saveModeLine + 2, 0, -1)
 		end
 	end
 
@@ -307,9 +344,8 @@ local function render_highlights(buffer)
 	end
 end
 
--- Function to open the selected file
-function M.openFile(fileNumber)
-	local filename = get_arrow_usecase.get_arrow_by_index(fileNumber)
+function M.openFile(file_number)
+	local filename = get_arrow_usecase.get_arrow_by_index(file_number)
 
 	if vim.b.arrow_current_mode == "delete_mode" then
 		remove_arrow_usecase.remove_arrow(filename)
@@ -458,19 +494,26 @@ function M.openMenu(bufnr)
 	vim.keymap.set("n", mappings.quit, closeMenu, menuKeymapOpts)
 	vim.keymap.set("n", mappings.edit, function()
 		closeMenu()
-		edit_mode_usecase.open_cache_file()
+		edit_mode_usecase.open_edit_mode()
 	end, menuKeymapOpts)
 
 	if separate_save_and_remove then
 		vim.keymap.set("n", mappings.toggle, function()
 			filename = filename or utils.get_current_buffer_path()
-			save_arrow_usecase.save_arrow(filename)
-			closeMenu()
+			if vim.b.arrow_current_mode == "save_mode" then
+				vim.b.arrow_current_mode = ""
+			else
+				vim.b.arrow_current_mode = "save_mode"
+			end
+
+			renderBuffer(menuBuf)
+			render_highlights(menuBuf)
+			-- save_arrow_usecase.save_arrow(filename)
+			-- closeMenu()
 		end, menuKeymapOpts)
 
 		vim.keymap.set("n", mappings.remove, function()
 			filename = filename or utils.get_current_buffer_path()
-
 			remove_arrow_usecase.remove_arrow(filename)
 			closeMenu()
 		end, menuKeymapOpts)

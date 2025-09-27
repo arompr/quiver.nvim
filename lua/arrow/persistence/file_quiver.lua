@@ -1,24 +1,23 @@
-local M = {}
-
-local in_memory_storage = require("arrow.persistence.in_memory_quiver")
 local config = require("arrow.config")
 local utils = require("arrow.utils")
 local git = require("arrow.git")
 
+local M = {}
+
 local function save_key()
 	if config.getState("global_bookmarks") == true then
-		return "global"
+		return "global.json"
 	end
 
 	if config.getState("separate_by_branch") then
 		local branch = git.refresh_git_branch()
 
 		if branch then
-			return utils.normalize_path_to_filename(config.getState("save_key_cached") .. "-" .. branch)
+			return utils.normalize_path_to_filename(config.getState("save_key_cached") .. "-" .. branch) .. ".json"
 		end
 	end
 
-	return utils.normalize_path_to_filename(config.getState("save_key_cached"))
+	return utils.normalize_path_to_filename(config.getState("save_key_cached")) .. ".json"
 end
 
 local function cache_file_path()
@@ -33,6 +32,7 @@ local function cache_file_path()
 	return save_path .. "/" .. save_key()
 end
 
+---@return Arrow[]
 function M.fetch_arrows()
 	local cache_path = cache_file_path()
 
@@ -41,17 +41,25 @@ function M.fetch_arrows()
 	end
 
 	local success, data = pcall(vim.fn.readfile, cache_path)
+	if not success then
+		return {}
+	end
 
-	if success then
-		return data
+	-- `readfile` returns a table of lines, so join them
+	local json_str = table.concat(data, "\n")
+	local ok, decoded = pcall(vim.fn.json_decode, json_str)
+
+	if ok and type(decoded) == "table" then
+		return decoded
 	else
 		return {}
 	end
 end
 
+---@param arrows Arrow[]
 function M.save_arrows(arrows)
-	local content = table.concat(arrows, "\n")
-	local lines = vim.fn.split(content, "\n")
+	local json_str = vim.fn.json_encode(arrows)
+	local lines = vim.fn.split(json_str, "\n")
 	vim.fn.writefile(lines, cache_file_path())
 end
 

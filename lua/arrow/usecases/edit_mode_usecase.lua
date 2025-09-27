@@ -33,7 +33,7 @@ local function cache_file_path()
 	return save_path .. "/" .. save_key()
 end
 
-function M.open_cache_file()
+function M.open_edit_mode()
 	git.refresh_git_branch()
 
 	local cache_path = cache_file_path()
@@ -95,6 +95,7 @@ function M.open_cache_file()
 		desc = "save cache buffer on leave",
 		callback = function()
 			local updated_content = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+			-- TODO: Rework this after persistence improved to key/value pairs
 			cache_quiver.set(updated_content)
 			cache_quiver.persist_arrows()
 		end,

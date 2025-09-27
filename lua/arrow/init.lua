@@ -15,6 +15,7 @@ function M.setup(opts)
 	vim.cmd("highlight default link ArrowCurrentFile SpecialChar")
 	vim.cmd("highlight default link ArrowAction Character")
 	vim.cmd("highlight default link ArrowDeleteMode DiagnosticError")
+	vim.cmd("highlight default link ArrowSaveMode WarningMsg")
 
 	opts = opts or {}
 

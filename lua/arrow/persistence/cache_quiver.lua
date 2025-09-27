@@ -36,12 +36,11 @@ function M.persist_arrows()
 	file_quiver.save_arrows(in_memory_quiver.fetch_arrows())
 end
 
----Fetch a bookmark by its filename
 ---@param filename string
----@return Bookmark|nil
+---@return Arrow|nil
 function M.fetch_by_filename(filename)
 	for _, arrow in ipairs(M.fetch_arrows()) do
-		if arrow == filename then
+		if arrow.filename == filename then
 			return arrow
 		end
 	end

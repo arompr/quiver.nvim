@@ -1,4 +1,5 @@
----@class Bookmark
+---@class Arrow
+---@field key string
 ---@field filename string
 
 local utils = require("arrow.utils")
@@ -6,22 +7,25 @@ local config = require("arrow.config")
 
 local M = {}
 
----@type Bookmark[]
+---@type Arrow[]
 local in_memory_arrows = {}
 
+---@param arrows Arrow[]
 function M.set_arrows(arrows)
 	in_memory_arrows = arrows
 end
 
----@param arrow Bookmark
-function M.save(arrow)
-	if not M.get_index(arrow) then
-		table.insert(in_memory_arrows, arrow)
+---@param filename string
+function M.save(filename)
+	if not M.get_index(filename) then
+		local key = tostring(#in_memory_arrows + 1)
+		table.insert(in_memory_arrows, { key = key, filename = filename })
 	end
 end
 
+---@param arrow Arrow
 function M.remove(arrow)
-	local index = M.get_index(arrow)
+	local index = M.get_index(arrow.filename)
 	if index then
 		M.remove_at(index)
 	end
@@ -31,9 +35,10 @@ function M.remove_at(index)
 	table.remove(in_memory_arrows, index)
 end
 
--- Check if a filename is saved, return its index or nil
 function M.get_index(filename)
-	for i, name in ipairs(in_memory_arrows) do
+	for i, arrow in ipairs(in_memory_arrows) do
+		local name = arrow.filename
+
 		if config.getState("relative_path") == true and config.getState("global_bookmarks") == false then
 			if not name:match("^%./") and not utils.string_contains_whitespace(name) then
 				name = "./" .. name
