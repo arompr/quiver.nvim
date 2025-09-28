@@ -166,7 +166,7 @@ local function renderBuffer(buffer)
 		for key in assignable_keys:gmatch(".") do
 			vim.keymap.set("n", key, function()
 				local file = vim.b[buf].filename
-				save_arrow_usecase.save_arrow(file)
+				save_arrow_usecase.save_arrow(key, file)
 				print("Saved file to key " .. key)
 				vim.g.global = "" -- exit save mode
 				closeMenu()
@@ -458,6 +458,7 @@ function M.openMenu(bufnr)
 
 	to_highlight = {}
 	filenames = get_arrow_usecase.get_arrows()
+	print("ui openMenu: " .. vim.inspect(filenames))
 	local filename
 
 	if config.getState("global_bookmarks") == true then

@@ -4,6 +4,7 @@ local file_quiver = require("arrow.persistence.file_quiver")
 local M = {}
 
 function M.save(arrow)
+	print("cache_quiver: " .. vim.inspect(arrow))
 	in_memory_quiver.save(arrow)
 end
 
@@ -17,6 +18,7 @@ function M.fetch_arrows()
 	local in_file_arrows = file_quiver.fetch_arrows()
 	in_memory_quiver.set_arrows(in_file_arrows)
 
+	print("cache_quiver fetch_arrows: " .. vim.inspect(in_file_arrows))
 	return in_file_arrows
 end
 
