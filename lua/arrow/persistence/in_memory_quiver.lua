@@ -17,11 +17,7 @@ end
 
 ---@param arrow Arrow
 function M.save(arrow)
-	print("in_memory_arrows arrow.key: " .. vim.inspect(arrow))
 	if not M.get_index(arrow.filename) then
-		-- local key = tostring(#in_memory_arrows + 1)
-		print("in_memory_arrows arrow.key: " .. arrow.key)
-		print("in_memory_arrows arrow.filename: " .. arrow.filename)
 		table.insert(in_memory_arrows, { key = arrow.key, filename = arrow.filename })
 	end
 end

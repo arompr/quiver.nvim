@@ -2,15 +2,14 @@ local cache_quiver = require("arrow.persistence.cache_quiver")
 
 local M = {}
 
----Return only filenames
----@return string[]
+---@return Arrow[]
 function M.get_arrows()
 	local arrows = cache_quiver.fetch_arrows()
-	local filenames = {}
+	local copy = {}
 	for i, arrow in ipairs(arrows) do
-		filenames[i] = arrow.filename
+		copy[i] = arrow
 	end
-	return filenames
+	return copy
 end
 
 ---Return filename by index
@@ -20,6 +19,17 @@ function M.get_arrow_by_index(index)
 	local arrow = cache_quiver.fetch_by_index(index)
 	if arrow then
 		return arrow.filename
+	end
+	return nil
+end
+
+---Return arrow by key
+---@param key string
+---@return Arrow|nil
+function M.get_arrow_by_key(key)
+	local arrow = cache_quiver.fetch_by_key(key)
+	if arrow then
+		return arrow
 	end
 	return nil
 end

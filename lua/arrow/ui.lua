@@ -15,6 +15,9 @@ local go_to_next_arrow_usecase = require("arrow.usecases.navigation.go_to_next_a
 local get_arrow_usecase = require("arrow.usecases.get_arrow_usecase")
 
 local filenames = {}
+
+---@type Arrow[]
+local arrows = {}
 local to_highlight = {}
 
 local current_index = 0
@@ -168,17 +171,14 @@ local function renderBuffer(buffer)
 				local file = vim.b[buf].filename
 				save_arrow_usecase.save_arrow(key, file)
 				print("Saved file to key " .. key)
-				vim.g.global = "" -- exit save mode
+				vim.g.global = ""
 				closeMenu()
 			end, { noremap = true, silent = true, buffer = buf, nowait = true })
 		end
 	end
 
-	for i, fileName in ipairs(formattedFilenames) do
-		local displayIndex = i
-
+	for i, arrow in ipairs(arrows) do
 		assignable_keys = config.getState("index_keys")
-		displayIndex = assignable_keys:sub(i, i)
 
 		vim.api.nvim_buf_add_highlight(buf, -1, "ArrowDeleteMode", i + 3, 0, -1)
 
@@ -192,10 +192,11 @@ local function renderBuffer(buffer)
 			current_index = i
 		end
 
-		vim.keymap.set("n", "" .. displayIndex, function()
-			M.openFile(i)
+		vim.keymap.set("n", "" .. arrow.key, function()
+			M.openFile(arrow.key)
 		end, { noremap = true, silent = true, buffer = buf, nowait = true })
 
+		local fileName = formattedFilenames[i]
 		if show_icons then
 			local icon, hl_group = icons.get_file_icon(filenames[i])
 
@@ -204,7 +205,7 @@ local function renderBuffer(buffer)
 			fileName = icon .. " " .. fileName
 		end
 
-		table.insert(lines, string.format("   %s %s", displayIndex, fileName))
+		table.insert(lines, string.format("   %s %s", arrow.key, fileName))
 	end
 
 	-- Add a separator
@@ -344,13 +345,21 @@ local function render_highlights(buffer)
 	end
 end
 
-function M.openFile(file_number)
-	local filename = get_arrow_usecase.get_arrow_by_index(file_number)
+function M.openFile(key)
+	local arrow = get_arrow_usecase.get_arrow_by_key(key)
+	if arrow == nil then
+		return
+	end
+	local filename = arrow.filename
 
 	if vim.b.arrow_current_mode == "delete_mode" then
 		remove_arrow_usecase.remove_arrow(filename)
 
-		filenames = get_arrow_usecase.get_arrows()
+		arrows = get_arrow_usecase.get_arrows()
+		filenames = {}
+		for _, item in ipairs(arrows) do
+			table.insert(filenames, item.filename)
+		end
 
 		renderBuffer(vim.api.nvim_get_current_buf())
 		render_highlights(vim.api.nvim_get_current_buf())
@@ -457,10 +466,14 @@ function M.openMenu(bufnr)
 	local call_buffer = bufnr or vim.api.nvim_get_current_buf()
 
 	to_highlight = {}
-	filenames = get_arrow_usecase.get_arrows()
-	print("ui openMenu: " .. vim.inspect(filenames))
-	local filename
 
+	arrows = get_arrow_usecase.get_arrows()
+	filenames = {}
+	for _, item in ipairs(arrows) do
+		table.insert(filenames, item.filename)
+	end
+
+	local filename
 	if config.getState("global_bookmarks") == true then
 		filename = vim.fn.expand("%:p")
 	else
