@@ -14,13 +14,23 @@ local go_to_previous_arrow_usecase = require("arrow.usecases.navigation.go_to_pr
 local go_to_next_arrow_usecase = require("arrow.usecases.navigation.go_to_next_arrow_usecase")
 local get_arrow_usecase = require("arrow.usecases.get_arrow_usecase")
 
-local filenames = {}
-
 ---@type Arrow[]
-local arrows = {}
+local stored_arrows = {}
 local to_highlight = {}
 
 local current_index = 0
+
+--- Returns arrow filenames
+---@param arrows Arrow[]
+---@return string[]
+local function get_filenames(arrows)
+	local arrow_filenames = {}
+	for _, value in pairs(arrows) do
+		table.insert(arrow_filenames, value.filename)
+	end
+
+	return arrow_filenames
+end
 
 local function getActionsMenu()
 	local mappings = config.getState("mappings")
@@ -60,14 +70,18 @@ local function getActionsMenu()
 	return return_mappings
 end
 
-local function format_file_names(file_names)
+---@param arrows Arrow[]
+---@return string[]
+local function format_file_names(arrows)
+	local filenames = get_filenames(arrows)
+
 	local full_path_list = config.getState("full_path_list")
 	local formatted_names = {}
 
 	-- Table to store occurrences of file names (tail)
 	local name_occurrences = {}
 
-	for _, full_path in ipairs(file_names) do
+	for _, full_path in ipairs(filenames) do
 		local tail = vim.fn.fnamemodify(full_path, ":t:r") -- Get the file name without extension
 
 		if vim.fn.isdirectory(full_path) == 1 then
@@ -94,7 +108,7 @@ local function format_file_names(file_names)
 		end
 	end
 
-	for _, full_path in ipairs(file_names) do
+	for _, full_path in ipairs(filenames) do
 		local tail = vim.fn.fnamemodify(full_path, ":t:r")
 		local tail_with_extension = vim.fn.fnamemodify(full_path, ":t")
 
@@ -160,7 +174,7 @@ local function renderBuffer(buffer)
 	local lines = { "" }
 
 	local assignable_keys = config.getState("index_keys")
-	local formattedFilenames = format_file_names(filenames)
+	local formattedFilenames = format_file_names(stored_arrows)
 
 	to_highlight = {}
 	current_index = 0
@@ -177,11 +191,12 @@ local function renderBuffer(buffer)
 		end
 	end
 
-	for i, arrow in ipairs(arrows) do
+	for i, arrow in ipairs(stored_arrows) do
 		assignable_keys = config.getState("index_keys")
 
 		vim.api.nvim_buf_add_highlight(buf, -1, "ArrowDeleteMode", i + 3, 0, -1)
 
+		local filenames = get_filenames(stored_arrows)
 		local parsed_filename = filenames[i]
 
 		if filenames[i]:sub(1, 2) == "./" then
@@ -256,7 +271,7 @@ local function render_highlights(buffer)
 		hl_group = "ArrowCurrentFile",
 	})
 
-	for i, _ in ipairs(filenames) do
+	for i, _ in ipairs(stored_arrows) do
 		if vim.b.arrow_current_mode == "delete_mode" then
 			ns_id = vim.api.nvim_create_namespace("ArrowDeleteMode")
 			vim.api.nvim_buf_set_extmark(menuBuf, ns_id, i, 3, {
@@ -278,7 +293,7 @@ local function render_highlights(buffer)
 		end
 	end
 
-	for i = #filenames + 3, #filenames + #actionsMenu + 3 do
+	for i = #stored_arrows + 3, #stored_arrows + #actionsMenu + 3 do
 		vim.api.nvim_buf_add_highlight(menuBuf, -1, "ArrowAction", i - 1, 3, 4)
 	end
 
@@ -308,32 +323,32 @@ local function render_highlights(buffer)
 
 	if saveModeLine >= 0 then
 		if vim.b.arrow_current_mode == "save_mode" then
-			vim.api.nvim_buf_add_highlight(menuBuf, -1, "ArrowSaveMode", #filenames + saveModeLine + 2, 0, -1)
+			vim.api.nvim_buf_add_highlight(menuBuf, -1, "ArrowSaveMode", #stored_arrows + saveModeLine + 2, 0, -1)
 		end
 	end
 
 	if deleteModeLine >= 0 then
 		if vim.b.arrow_current_mode == "delete_mode" then
-			vim.api.nvim_buf_add_highlight(menuBuf, -1, "ArrowDeleteMode", #filenames + deleteModeLine + 2, 0, -1)
+			vim.api.nvim_buf_add_highlight(menuBuf, -1, "ArrowDeleteMode", #stored_arrows + deleteModeLine + 2, 0, -1)
 		end
 	end
 
 	if verticalModeLine >= 0 then
 		if vim.b.arrow_current_mode == "vertical_mode" then
-			vim.api.nvim_buf_add_highlight(menuBuf, -1, "ArrowAction", #filenames + verticalModeLine + 2, 0, -1)
+			vim.api.nvim_buf_add_highlight(menuBuf, -1, "ArrowAction", #stored_arrows + verticalModeLine + 2, 0, -1)
 		end
 	end
 
 	if horizontalModelLine >= 0 then
 		if vim.b.arrow_current_mode == "horizontal_mode" then
-			vim.api.nvim_buf_add_highlight(menuBuf, -1, "ArrowAction", #filenames + horizontalModelLine + 2, 0, -1)
+			vim.api.nvim_buf_add_highlight(menuBuf, -1, "ArrowAction", #stored_arrows + horizontalModelLine + 2, 0, -1)
 		end
 	end
 
 	local pattern = " %. .-$"
 	local line_number = 1
 
-	while line_number <= #filenames + 1 do
+	while line_number <= #stored_arrows + 1 do
 		local line_content = vim.api.nvim_buf_get_lines(menuBuf, line_number - 1, line_number, false)[1]
 
 		local match_start, match_end = string.find(line_content, pattern)
@@ -355,11 +370,7 @@ function M.openFile(key)
 	if vim.b.arrow_current_mode == "delete_mode" then
 		remove_arrow_usecase.remove_arrow(filename)
 
-		arrows = get_arrow_usecase.get_arrows()
-		filenames = {}
-		for _, item in ipairs(arrows) do
-			table.insert(filenames, item.filename)
-		end
+		stored_arrows = get_arrow_usecase.get_arrows()
 
 		renderBuffer(vim.api.nvim_get_current_buf())
 		render_highlights(vim.api.nvim_get_current_buf())
@@ -399,7 +410,7 @@ end
 
 function M.getWindowConfig()
 	local show_handbook = not (config.getState("hide_handbook"))
-	local parsedFileNames = format_file_names(filenames)
+	local parsedFileNames = format_file_names(stored_arrows)
 	local separate_save_and_remove = config.getState("separate_save_and_remove")
 
 	local max_width = 0
@@ -416,7 +427,7 @@ function M.getWindowConfig()
 	end
 
 	local width = max_width + 12
-	local height = #filenames + 2
+	local height = #stored_arrows + 2
 
 	if show_handbook then
 		height = height + 10
@@ -467,11 +478,7 @@ function M.openMenu(bufnr)
 
 	to_highlight = {}
 
-	arrows = get_arrow_usecase.get_arrows()
-	filenames = {}
-	for _, item in ipairs(arrows) do
-		table.insert(filenames, item.filename)
-	end
+	stored_arrows = get_arrow_usecase.get_arrows()
 
 	local filename
 	if config.getState("global_bookmarks") == true then
