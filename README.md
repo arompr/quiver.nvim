@@ -14,6 +14,11 @@ That’s why I created **quiver.nvim**:
 - This means that, like Harpoon, you can bind a file to a particular letter (`a`, `s`, `d`, etc.) while still benefiting from Arrow’s lightweight single-UI experience.  
 - If you don’t care about fixed keys, Arrow is probably what you are looking for.  
 
+## Todos
+- [] Fix go next/prev 
+- [] Add toggle to next available key functionality
+- [] Add reassign to key functionality
+
 ## Installation
 
 ### Lazy

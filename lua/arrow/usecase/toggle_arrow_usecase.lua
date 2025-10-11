@@ -1,6 +1,7 @@
 local git = require("arrow.git")
 local utils = require("arrow.utils")
 local cache_quiver = require("arrow.persistence.cache_quiver")
+local store = require("arrow.store.state_store")
 local events = require("arrow.events")
 
 local M = {}
@@ -18,6 +19,8 @@ function M.toggle(filename)
 		cache_quiver.save(filename)
 		cache_quiver.persist_arrows()
 	end
+
+	store.set_arrows(cache_quiver.fetch_arrows())
 	events.notify()
 end
 

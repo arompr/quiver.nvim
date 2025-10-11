@@ -5,50 +5,35 @@ local utils = require("arrow.utils")
 local git = require("arrow.git")
 local icons = require("arrow.integration.icons")
 
-local edit_mode_usecase = require("arrow.usecases.edit_mode_usecase")
-local remove_arrow_usecase = require("arrow.usecases.remove_arrow_usecase")
-local toggle_arrow_usecase = require("arrow.usecases.toggle_arrow_usecase")
-local clear_arrows_usecase = require("arrow.usecases.clear_arrows_usecase")
-local go_to_previous_arrow_usecase = require("arrow.usecases.navigation.go_to_previous_arrow_usecase")
-local go_to_next_arrow_usecase = require("arrow.usecases.navigation.go_to_next_arrow_usecase")
-local get_arrow_usecase = require("arrow.usecases.get_arrow_usecase")
+local edit_mode_usecase = require("arrow.usecase.edit_mode_usecase")
+local remove_arrow_usecase = require("arrow.usecase.remove_arrow_usecase")
+local toggle_arrow_usecase = require("arrow.usecase.toggle_arrow_usecase")
+local clear_arrows_usecase = require("arrow.usecase.clear_arrows_usecase")
+local go_to_previous_arrow_usecase = require("arrow.usecase.navigation.go_to_previous_arrow_usecase")
+local go_to_next_arrow_usecase = require("arrow.usecase.navigation.go_to_next_arrow_usecase")
+local get_arrow_usecase = require("arrow.usecase.get_arrow_usecase")
 
-local mode_context = require("arrow.strategies.mode_context")
-local save_mode_strategy = require("arrow.strategies.save_mode_strategy")
-local default_mode_strategy = require("arrow.strategies.default_mode_strategy")
+local mode_context = require("arrow.strategy.mode_context")
+local save_mode_strategy = require("arrow.strategy.save_mode_strategy")
+local default_mode_strategy = require("arrow.strategy.default_mode_strategy")
 
----@type Arrow[]
-local stored_arrows = {}
-local to_highlight = {}
-local current_index = 0
+local store = require("arrow.store.state_store")
 
 local ns_id = vim.api.nvim_create_namespace("arrow")
 local ns_id_current_file = vim.api.nvim_create_namespace("ArrowCurrentFile")
 local ns_id_delete_mode = vim.api.nvim_create_namespace("ArrowDeleteMode")
 local ns_id_file_index = vim.api.nvim_create_namespace("ArrowFileIndex")
 
---- Returns arrow filenames
----@param arrows Arrow[]
----@return string[]
-local function get_filenames(arrows)
-	local arrow_filenames = {}
-	for _, value in pairs(arrows) do
-		table.insert(arrow_filenames, value.filename)
-	end
-
-	return arrow_filenames
-end
-
 local function getActionsMenu()
 	local mappings = config.getState("mappings")
 
-	if #get_arrow_usecase.get_arrows() == 0 then
+	if #store.arrows() == 0 then
 		return {
 			string.format("%s Save File", mappings.toggle),
 		}
 	end
 
-	local already_saved = current_index > 0
+	local already_saved = store.current_index() > 0
 
 	local separate_save_and_remove = config.getState("separate_save_and_remove")
 
@@ -77,11 +62,9 @@ local function getActionsMenu()
 	return return_mappings
 end
 
----@param arrows Arrow[]
+---@param filenames string[]
 ---@return string[]
-local function format_file_names(arrows)
-	local filenames = get_filenames(arrows)
-
+local function format_file_names(filenames)
 	local full_path_list = config.getState("full_path_list")
 	local formatted_names = {}
 
@@ -180,35 +163,35 @@ local function renderBuffer(buffer)
 	local buf = buffer or vim.api.nvim_get_current_buf()
 	local lines = { "" }
 
-	local formattedFilenames = format_file_names(stored_arrows)
+	local arrows = store.arrows()
+	local filenames = store.filenames()
+	local formattedFilenames = format_file_names(filenames)
 
-	to_highlight = {}
-	current_index = 0
+	store.clear_highlights()
+	store.set_current_index(0)
 
-	-- Execute the strategy
 	mode_context.setup_keymaps({
 		buf = buf,
 		openFile = M.openFile,
 	})
 
 	-- Render arrows
-	for i, arrow in ipairs(stored_arrows) do
+	for i, arrow in ipairs(arrows) do
 		vim.highlight.range(buf, ns_id, "ArrowDeleteMode", { i + 3, 0 }, { i + 3, -1 })
 
-		local filenames = get_filenames(stored_arrows)
 		local parsed_filename = filenames[i]
 		if parsed_filename:sub(1, 2) == "./" then
 			parsed_filename = parsed_filename:sub(3)
 		end
 
 		if parsed_filename == vim.b[buf].filename then
-			current_index = i
+			store.set_current_index(i)
 		end
 
 		local fileName = formattedFilenames[i]
 		if show_icons then
 			local icon, hl_group = icons.get_file_icon(filenames[i])
-			to_highlight[i] = hl_group
+			store.add_highlight(hl_group)
 			fileName = icon .. " " .. fileName
 		end
 
@@ -216,7 +199,7 @@ local function renderBuffer(buffer)
 	end
 
 	-- Handle empty list
-	if #get_arrow_usecase.get_arrows() == 0 then
+	if #store.arrows() == 0 then
 		table.insert(lines, "   No files yet.")
 	end
 
@@ -236,21 +219,11 @@ local function renderBuffer(buffer)
 	vim.bo[buf].buftype = "nofile"
 end
 
--- Function to create the menu buffer with a list format
-local function createMenuBuffer(filename)
-	local buf = vim.api.nvim_create_buf(false, true)
-
-	vim.b[buf].filename = filename
-	vim.b[buf].arrow_current_mode = ""
-	mode_context.init(default_mode_strategy, buf)
-	renderBuffer(buf)
-
-	return buf
-end
-
 local function render_highlights(buffer)
 	local actionsMenu = getActionsMenu()
 	local mappings = config.getState("mappings")
+	local arrows = store.arrows()
+	local current_index = store.current_index()
 
 	vim.api.nvim_buf_clear_namespace(buffer, -1, 0, -1)
 	local menuBuf = buffer or vim.api.nvim_get_current_buf()
@@ -261,7 +234,7 @@ local function render_highlights(buffer)
 		hl_group = "ArrowCurrentFile",
 	})
 
-	for i, _ in ipairs(stored_arrows) do
+	for i, _ in ipairs(arrows) do
 		if vim.b.arrow_current_mode == "delete_mode" then
 			vim.api.nvim_buf_set_extmark(menuBuf, ns_id_delete_mode, i, 3, {
 				end_col = 4,
@@ -276,12 +249,12 @@ local function render_highlights(buffer)
 	end
 
 	if config.getState("show_icons") then
-		for k, v in pairs(to_highlight) do
+		for k, v in pairs(store.highlights()) do
 			vim.api.nvim_buf_add_highlight(menuBuf, -1, v, k, 5, 8)
 		end
 	end
 
-	for i = #stored_arrows + 3, #stored_arrows + #actionsMenu + 3 do
+	for i = #arrows + 3, #arrows + #actionsMenu + 3 do
 		vim.api.nvim_buf_add_highlight(menuBuf, -1, "ArrowAction", i - 1, 3, 4)
 	end
 
@@ -311,32 +284,32 @@ local function render_highlights(buffer)
 
 	if saveModeLine >= 0 then
 		if vim.b.arrow_current_mode == "save_mode" then
-			vim.api.nvim_buf_add_highlight(menuBuf, -1, "ArrowSaveMode", #stored_arrows + saveModeLine + 2, 0, -1)
+			vim.api.nvim_buf_add_highlight(menuBuf, -1, "ArrowSaveMode", #arrows + saveModeLine + 2, 0, -1)
 		end
 	end
 
 	if deleteModeLine >= 0 then
 		if vim.b.arrow_current_mode == "delete_mode" then
-			vim.api.nvim_buf_add_highlight(menuBuf, -1, "ArrowDeleteMode", #stored_arrows + deleteModeLine + 2, 0, -1)
+			vim.api.nvim_buf_add_highlight(menuBuf, -1, "ArrowDeleteMode", #arrows + deleteModeLine + 2, 0, -1)
 		end
 	end
 
 	if verticalModeLine >= 0 then
 		if vim.b.arrow_current_mode == "vertical_mode" then
-			vim.api.nvim_buf_add_highlight(menuBuf, -1, "ArrowAction", #stored_arrows + verticalModeLine + 2, 0, -1)
+			vim.api.nvim_buf_add_highlight(menuBuf, -1, "ArrowAction", #arrows + verticalModeLine + 2, 0, -1)
 		end
 	end
 
 	if horizontalModelLine >= 0 then
 		if vim.b.arrow_current_mode == "horizontal_mode" then
-			vim.api.nvim_buf_add_highlight(menuBuf, -1, "ArrowAction", #stored_arrows + horizontalModelLine + 2, 0, -1)
+			vim.api.nvim_buf_add_highlight(menuBuf, -1, "ArrowAction", #arrows + horizontalModelLine + 2, 0, -1)
 		end
 	end
 
 	local pattern = " %. .-$"
 	local line_number = 1
 
-	while line_number <= #stored_arrows + 1 do
+	while line_number <= #arrows + 1 do
 		local line_content = vim.api.nvim_buf_get_lines(menuBuf, line_number - 1, line_number, false)[1]
 
 		local match_start, match_end = string.find(line_content, pattern)
@@ -348,17 +321,27 @@ local function render_highlights(buffer)
 	end
 end
 
-function M.openFile(key, buf)
+-- Function to create the menu buffer with a list format
+local function createMenuBuffer(filename)
+	local buf = vim.api.nvim_create_buf(false, true)
+
+	vim.b[buf].filename = filename
+	vim.b[buf].arrow_current_mode = ""
+
+	renderBuffer(buf)
+
+	return buf
+end
+
+function M.openFile(key)
 	local arrow = get_arrow_usecase.get_arrow_by_key(key)
 	if arrow == nil then
 		return
 	end
 	local filename = arrow.filename
 
-	if vim.b[buf].arrow_current_mode == "delete_mode" then
+	if vim.b.arrow_current_mode == "delete_mode" then
 		remove_arrow_usecase.remove_arrow(filename)
-
-		stored_arrows = get_arrow_usecase.get_arrows()
 
 		renderBuffer(vim.api.nvim_get_current_buf())
 		render_highlights(vim.api.nvim_get_current_buf())
@@ -398,7 +381,8 @@ end
 
 function M.getWindowConfig()
 	local show_handbook = not (config.getState("hide_handbook"))
-	local parsedFileNames = format_file_names(stored_arrows)
+	local filenames = store.filenames()
+	local parsedFileNames = format_file_names(filenames)
 	local separate_save_and_remove = config.getState("separate_save_and_remove")
 
 	local max_width = 0
@@ -415,7 +399,7 @@ function M.getWindowConfig()
 	end
 
 	local width = max_width + 12
-	local height = #stored_arrows + 2
+	local height = #filenames + 2
 
 	if show_handbook then
 		height = height + 10
@@ -431,7 +415,7 @@ function M.getWindowConfig()
 		col = math.ceil((vim.o.columns - width) / 2),
 	}
 
-	local is_empty = #get_arrow_usecase.get_arrows() == 0
+	local is_empty = #store.arrows() == 0
 
 	if is_empty and show_handbook then
 		current_config.height = 5
@@ -464,9 +448,8 @@ function M.openMenu(bufnr)
 
 	local call_buffer = bufnr or vim.api.nvim_get_current_buf()
 
-	to_highlight = {}
-
-	stored_arrows = get_arrow_usecase.get_arrows()
+	store.clear_highlights()
+	store.set_arrows(get_arrow_usecase.get_arrows())
 
 	local filename
 	if config.getState("global_bookmarks") == true then
@@ -474,6 +457,14 @@ function M.openMenu(bufnr)
 	else
 		filename = utils.get_current_buffer_path()
 	end
+
+	save_mode_strategy.setup({
+		closeMenu = closeMenu,
+		renderBuffer = renderBuffer,
+		render_highlights = render_highlights,
+	})
+
+	mode_context.set_strategy(default_mode_strategy)
 
 	local menuBuf = createMenuBuffer(filename)
 
@@ -593,7 +584,7 @@ function M.openMenu(bufnr)
 		desc = "Disable Cursor",
 		once = true,
 		callback = function()
-			current_index = 0
+			store.set_current_index(0)
 
 			vim.cmd("highlight clear ArrowCursor")
 			vim.schedule(function()

@@ -7,8 +7,6 @@ function M.save(arrow)
 	in_memory_quiver.save(arrow)
 end
 
-function M.replace(arrow) end
-
 function M.fetch_arrows()
 	local in_memory_arrows = in_memory_quiver.fetch_arrows()
 
@@ -70,4 +68,5 @@ end
 function M.get_file_index(filename)
 	return in_memory_quiver.get_index(filename)
 end
+
 return M
