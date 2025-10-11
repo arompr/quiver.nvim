@@ -151,12 +151,12 @@ local function format_file_names(filenames)
 	return formatted_names
 end
 
-local function closeMenu()
+local function close_menu()
 	local win = vim.fn.win_getid()
 	vim.api.nvim_win_close(win, true)
 end
 
-local function renderBuffer(buffer)
+local function render_buffer(buffer)
 	vim.bo[buffer].modifiable = true
 
 	local show_icons = config.getState("show_icons")
@@ -172,7 +172,6 @@ local function renderBuffer(buffer)
 
 	mode_context.setup_keymaps({
 		buf = buf,
-		openFile = M.openFile,
 	})
 
 	-- Render arrows
@@ -328,55 +327,9 @@ local function createMenuBuffer(filename)
 	vim.b[buf].filename = filename
 	vim.b[buf].arrow_current_mode = ""
 
-	renderBuffer(buf)
+	render_buffer(buf)
 
 	return buf
-end
-
-function M.openFile(key)
-	local arrow = get_arrow_usecase.get_arrow_by_key(key)
-	if arrow == nil then
-		return
-	end
-	local filename = arrow.filename
-
-	if vim.b.arrow_current_mode == "delete_mode" then
-		remove_arrow_usecase.remove_arrow(filename)
-
-		renderBuffer(vim.api.nvim_get_current_buf())
-		render_highlights(vim.api.nvim_get_current_buf())
-	else
-		if not filename then
-			print("Invalid file number")
-
-			return
-		end
-
-		local action
-
-		filename = vim.fn.fnameescape(filename)
-
-		if vim.b.arrow_current_mode == "" or not vim.b.arrow_current_mode then
-			action = config.getState("open_action")
-		elseif vim.b.arrow_current_mode == "vertical_mode" then
-			action = config.getState("vertical_action")
-		elseif vim.b.arrow_current_mode == "horizontal_mode" then
-			action = config.getState("horizontal_action")
-		end
-
-		closeMenu()
-		vim.api.nvim_exec_autocmds("User", { pattern = "ArrowOpenFile" })
-
-		if
-			config.getState("global_bookmarks") == true
-			or config.getState("save_key_name") == "cwd"
-			or config.getState("save_key_name") == "git_root_bare"
-		then
-			action(filename, vim.b.filename)
-		else
-			action(config.getState("save_key_cached") .. "/" .. filename, vim.b.filename)
-		end
-	end
 end
 
 function M.getWindowConfig()
@@ -458,9 +411,14 @@ function M.openMenu(bufnr)
 		filename = utils.get_current_buffer_path()
 	end
 
+	default_mode_strategy.setup({
+		close_menu = close_menu,
+		render_buffer = render_buffer,
+		render_highlights = render_highlights,
+	})
 	save_mode_strategy.setup({
-		closeMenu = closeMenu,
-		renderBuffer = renderBuffer,
+		close_menu = close_menu,
+		render_buffer = render_buffer,
 		render_highlights = render_highlights,
 	})
 
@@ -478,12 +436,12 @@ function M.openMenu(bufnr)
 
 	local menuKeymapOpts = { noremap = true, silent = true, buffer = menuBuf, nowait = true }
 
-	vim.keymap.set("n", config.getState("leader_key"), closeMenu, menuKeymapOpts)
+	vim.keymap.set("n", config.getState("leader_key"), close_menu, menuKeymapOpts)
 
 	local buffer_leader_key = config.getState("buffer_leader_key")
 	if buffer_leader_key then
 		vim.keymap.set("n", buffer_leader_key, function()
-			closeMenu()
+			close_menu()
 
 			vim.schedule(function()
 				require("arrow.buffer_ui").openMenu(call_buffer)
@@ -491,9 +449,9 @@ function M.openMenu(bufnr)
 		end, menuKeymapOpts)
 	end
 
-	vim.keymap.set("n", mappings.quit, closeMenu, menuKeymapOpts)
+	vim.keymap.set("n", mappings.quit, close_menu, menuKeymapOpts)
 	vim.keymap.set("n", mappings.edit, function()
-		closeMenu()
+		close_menu()
 		edit_mode_usecase.open_edit_mode()
 	end, menuKeymapOpts)
 
@@ -508,7 +466,7 @@ function M.openMenu(bufnr)
 				mode_context.set_strategy(save_mode_strategy)
 			end
 
-			renderBuffer(menuBuf)
+			render_buffer(menuBuf)
 			render_highlights(menuBuf)
 			-- save_arrow_usecase.save_arrow(filename)
 			-- closeMenu()
@@ -517,31 +475,31 @@ function M.openMenu(bufnr)
 		vim.keymap.set("n", mappings.remove, function()
 			filename = filename or utils.get_current_buffer_path()
 			remove_arrow_usecase.remove_arrow(filename)
-			closeMenu()
+			close_menu()
 		end, menuKeymapOpts)
 	else
 		vim.keymap.set("n", mappings.toggle, function()
 			toggle_arrow_usecase.toggle(filename)
-			closeMenu()
+			close_menu()
 		end, menuKeymapOpts)
 	end
 
 	vim.keymap.set("n", mappings.clear_all_items, function()
 		clear_arrows_usecase.clear()
-		closeMenu()
+		close_menu()
 	end, menuKeymapOpts)
 
 	vim.keymap.set("n", mappings.next_item, function()
-		closeMenu()
+		close_menu()
 		go_to_next_arrow_usecase.next()
 	end, menuKeymapOpts)
 
 	vim.keymap.set("n", mappings.prev_item, function()
-		closeMenu()
+		close_menu()
 		go_to_previous_arrow_usecase.previous()
 	end, menuKeymapOpts)
 
-	vim.keymap.set("n", "<Esc>", closeMenu, menuKeymapOpts)
+	vim.keymap.set("n", "<Esc>", close_menu, menuKeymapOpts)
 
 	vim.keymap.set("n", mappings.delete_mode, function()
 		if vim.b.arrow_current_mode == "delete_mode" then
@@ -550,7 +508,7 @@ function M.openMenu(bufnr)
 			vim.b[menuBuf].arrow_current_mode = "delete_mode"
 		end
 
-		renderBuffer(menuBuf)
+		render_buffer(menuBuf)
 		render_highlights(menuBuf)
 	end, menuKeymapOpts)
 
@@ -561,7 +519,7 @@ function M.openMenu(bufnr)
 			vim.b.arrow_current_mode = "vertical_mode"
 		end
 
-		renderBuffer(menuBuf)
+		render_buffer(menuBuf)
 		render_highlights(menuBuf)
 	end, menuKeymapOpts)
 
@@ -572,7 +530,7 @@ function M.openMenu(bufnr)
 			vim.b.arrow_current_mode = "horizontal_mode"
 		end
 
-		renderBuffer(menuBuf)
+		render_buffer(menuBuf)
 		render_highlights(menuBuf)
 	end, menuKeymapOpts)
 
