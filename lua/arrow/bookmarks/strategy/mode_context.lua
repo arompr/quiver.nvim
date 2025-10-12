@@ -1,4 +1,4 @@
-local default_mode = require("arrow.strategy.default_mode_strategy")
+local default_mode = require("arrow.bookmarks.strategy.default_mode_strategy")
 
 local M = {}
 

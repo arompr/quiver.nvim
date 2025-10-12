@@ -1,4 +1,4 @@
-local ui = require("arrow.ui")
+local ui = require("arrow.bookmarks.ui")
 local buffer_ui = require("arrow.buffer_ui")
 local buffer_persist = require("arrow.buffer_persist")
 
@@ -15,7 +15,7 @@ end
 
 M.commands = {
 	open = function()
-		ui.openMenu()
+		ui.open_menu()
 	end,
 	next_buffer_bookmark = function()
 		local cur_buffer = vim.api.nvim_get_current_buf()

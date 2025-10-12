@@ -2,7 +2,7 @@ local M = {}
 
 local config = require("arrow.config")
 local utils = require("arrow.utils")
-local ui = require("arrow.ui")
+local ui = require("arrow.bookmarks.ui")
 local buffer_persist = require("arrow.buffer_persist")
 local git = require("arrow.git")
 local commands = require("arrow.commands")
@@ -94,7 +94,7 @@ function M.setup(opts)
 		vim.keymap.set(
 			"n",
 			leader_key,
-			ui.openMenu,
+			ui.open_menu,
 			{ noremap = true, silent = true, nowait = true, desc = "Arrow File Mappings" }
 		)
 	end

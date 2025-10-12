@@ -18,6 +18,7 @@ That’s why I created **quiver.nvim**:
 - [] Fix go next/prev 
 - [] Add toggle to next available key functionality
 - [] Add reassign to key functionality
+- [] Add assignable keys to menu
 
 ## Installation
 

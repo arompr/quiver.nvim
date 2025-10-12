@@ -5,19 +5,20 @@ local utils = require("arrow.utils")
 local git = require("arrow.git")
 local icons = require("arrow.integration.icons")
 
-local edit_mode_usecase = require("arrow.usecase.edit_mode_usecase")
-local remove_arrow_usecase = require("arrow.usecase.remove_arrow_usecase")
-local toggle_arrow_usecase = require("arrow.usecase.toggle_arrow_usecase")
-local clear_arrows_usecase = require("arrow.usecase.clear_arrows_usecase")
-local go_to_previous_arrow_usecase = require("arrow.usecase.navigation.go_to_previous_arrow_usecase")
-local go_to_next_arrow_usecase = require("arrow.usecase.navigation.go_to_next_arrow_usecase")
-local get_arrow_usecase = require("arrow.usecase.get_arrow_usecase")
+local edit_mode_usecase = require("arrow.bookmarks.usecase.edit_mode_usecase")
+local remove_arrow_usecase = require("arrow.bookmarks.usecase.remove_arrow_usecase")
+local toggle_arrow_usecase = require("arrow.bookmarks.usecase.toggle_arrow_usecase")
+local clear_arrows_usecase = require("arrow.bookmarks.usecase.clear_arrows_usecase")
+local go_to_previous_arrow_usecase = require("arrow.bookmarks.usecase.navigation.go_to_previous_arrow_usecase")
+local go_to_next_arrow_usecase = require("arrow.bookmarks.usecase.navigation.go_to_next_arrow_usecase")
+local get_arrow_usecase = require("arrow.bookmarks.usecase.get_arrow_usecase")
 
-local mode_context = require("arrow.strategy.mode_context")
-local save_mode_strategy = require("arrow.strategy.save_mode_strategy")
-local default_mode_strategy = require("arrow.strategy.default_mode_strategy")
+local mode_context = require("arrow.bookmarks.strategy.mode_context")
+local default_mode_strategy = require("arrow.bookmarks.strategy.default_mode_strategy")
+local save_mode_strategy = require("arrow.bookmarks.strategy.save_mode_strategy")
+local delete_mode_strategy = require("arrow.bookmarks.strategy.delete_mode_strategy")
 
-local store = require("arrow.store.state_store")
+local store = require("arrow.bookmarks.store.state_store")
 
 local ns_id = vim.api.nvim_create_namespace("arrow")
 local ns_id_current_file = vim.api.nvim_create_namespace("ArrowCurrentFile")
@@ -321,7 +322,7 @@ local function render_highlights(buffer)
 end
 
 -- Function to create the menu buffer with a list format
-local function createMenuBuffer(filename)
+local function create_menu_buffer(filename)
 	local buf = vim.api.nvim_create_buf(false, true)
 
 	vim.b[buf].filename = filename
@@ -332,7 +333,7 @@ local function createMenuBuffer(filename)
 	return buf
 end
 
-function M.getWindowConfig()
+function M.get_window_config()
 	local show_handbook = not (config.getState("hide_handbook"))
 	local filenames = store.filenames()
 	local parsedFileNames = format_file_names(filenames)
@@ -396,7 +397,7 @@ function M.getWindowConfig()
 	return res
 end
 
-function M.openMenu(bufnr)
+function M.open_menu(bufnr)
 	git.refresh_git_branch()
 
 	local call_buffer = bufnr or vim.api.nvim_get_current_buf()
@@ -421,12 +422,16 @@ function M.openMenu(bufnr)
 		render_buffer = render_buffer,
 		render_highlights = render_highlights,
 	})
+	delete_mode_strategy.setup({
+		render_buffer = render_buffer,
+		render_highlights = render_highlights,
+	})
 
 	mode_context.set_strategy(default_mode_strategy)
 
-	local menuBuf = createMenuBuffer(filename)
+	local menuBuf = create_menu_buffer(filename)
 
-	local window_config = M.getWindowConfig()
+	local window_config = M.get_window_config()
 
 	local win = vim.api.nvim_open_win(menuBuf, true, window_config)
 
@@ -504,8 +509,10 @@ function M.openMenu(bufnr)
 	vim.keymap.set("n", mappings.delete_mode, function()
 		if vim.b.arrow_current_mode == "delete_mode" then
 			vim.b[menuBuf].arrow_current_mode = ""
+			mode_context.set_strategy(default_mode_strategy)
 		else
 			vim.b[menuBuf].arrow_current_mode = "delete_mode"
+			mode_context.set_strategy(delete_mode_strategy)
 		end
 
 		render_buffer(menuBuf)

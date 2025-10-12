@@ -1,16 +1,17 @@
-local save_arrow_usecase = require("arrow.usecase.save_arrow_usecase")
+local save_arrow_usecase = require("arrow.bookmarks.usecase.save_arrow_usecase")
 local config = require("arrow.config")
 
 local M = {}
 
 ---@class UIHooksSaveModeStrategy
----@field closeMenu fun()			# Closes the Arrow menu window
----@field renderBuffer fun(buf: integer)  	# Renders buffer contents
----@field renderHighlights fun(buf: integer) 	# Renders highlights in buffer
+---@field close_menu fun()			# Closes the Arrow menu window
+---@field render_buffer fun(buf: integer)  	# Renders buffer contents
+---@field render_highlights fun(buf: integer) 	# Renders highlights in buffer
 
 ---@type UIHooksSaveModeStrategy | nil
 local ui = nil
 
+---@param opts UIHooksSaveModeStrategy
 function M.setup(opts)
 	ui = opts
 end

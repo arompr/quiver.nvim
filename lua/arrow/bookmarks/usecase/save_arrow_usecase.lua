@@ -1,5 +1,5 @@
 local cache_quiver = require("arrow.persistence.cache_quiver")
-local store = require("arrow.store.state_store")
+local store = require("arrow.bookmarks.store.state_store")
 local events = require("arrow.events")
 
 local M = {}

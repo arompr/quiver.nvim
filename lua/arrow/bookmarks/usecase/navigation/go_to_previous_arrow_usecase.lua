@@ -1,5 +1,5 @@
 local cache_quiver = require("arrow.persistence.cache_quiver")
-local go_to_subcase = require("arrow.usecase.navigation.go_to_subcase")
+local go_to_subcase = require("arrow.bookmarks.usecase.navigation.go_to_subcase")
 local git = require("arrow.git")
 local utils = require("arrow.utils")
 
