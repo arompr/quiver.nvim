@@ -186,7 +186,7 @@ function M.setup(opts)
 	}
 
 	config.setState("mappings", utils.join_two_keys_tables(default_mappings, opts.mappings or {}))
-	config.setState("full_path_list", utils.join_two_arrays(default_full_path_list, opts.full_path_list or {}))
+	config.setState("full_path_list", opts.full_path_list or default_full_path_list)
 
 	vim.api.nvim_create_augroup("arrow", { clear = true })
 

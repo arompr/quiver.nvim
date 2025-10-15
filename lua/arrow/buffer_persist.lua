@@ -112,6 +112,12 @@ function M.sync_buffer_bookmarks(bufnr)
 		end)
 	end
 
+	local bookmarks = M.local_bookmarks[bufnr]
+	if not bookmarks or #bookmarks == 0 then
+		-- Nothing to save, skip file creation
+		return
+	end
+
 	local buffer_file_name = vim.api.nvim_buf_get_name(bufnr)
 	local path = M.cache_file_path(buffer_file_name)
 

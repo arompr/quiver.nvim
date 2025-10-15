@@ -95,9 +95,11 @@ function M.open_edit_mode()
 		desc = "save cache buffer on leave",
 		callback = function()
 			local updated_content = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+
 			-- TODO: Rework this after persistence improved to key/value pairs
+			-- TODO reorder cache_quiver arrows with updated_content
 			cache_quiver.set(updated_content)
-			cache_quiver.persist_arrows()
+			-- cache_quiver.persist_arrows()
 		end,
 	})
 
