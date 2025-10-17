@@ -11,10 +11,16 @@ local M = {}
 
 ---@type UIHooksDefaultModeStrategy | nil
 local ui = nil
+local action = config.getState("open_action")
 
 ---@param opts UIHooksDefaultModeStrategy
 function M.setup(opts)
 	ui = opts
+	action = config.getState("open_action")
+end
+
+function M.set_action(new_action)
+	action = new_action
 end
 
 ---@param key string
@@ -36,17 +42,7 @@ local function open_file(key)
 		return
 	end
 
-	local action
-
 	filename = vim.fn.fnameescape(filename)
-
-	if vim.b.arrow_current_mode == "" or not vim.b.arrow_current_mode then
-		action = config.getState("open_action")
-	elseif vim.b.arrow_current_mode == "vertical_mode" then
-		action = config.getState("vertical_action")
-	elseif vim.b.arrow_current_mode == "horizontal_mode" then
-		action = config.getState("horizontal_action")
-	end
 
 	ui.close_menu()
 	vim.api.nvim_exec_autocmds("User", { pattern = "ArrowOpenFile" })

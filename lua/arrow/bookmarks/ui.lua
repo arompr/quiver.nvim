@@ -15,7 +15,6 @@ local go_to_next_arrow_usecase = require("arrow.bookmarks.usecase.navigation.go_
 local get_arrow_usecase = require("arrow.bookmarks.usecase.get_arrow_usecase")
 
 local mode_context = require("arrow.bookmarks.strategy.mode_context")
-local render = require("arrow.bookmarks.render")
 
 local store = require("arrow.bookmarks.store.state_store")
 
@@ -133,7 +132,7 @@ local function create_menu_buffer(filename)
 	vim.b[buf].filename = filename
 	vim.b[buf].arrow_current_mode = ""
 
-	render_buffer(buf)
+	mode_context.render_buffer(buf)
 
 	return buf
 end
@@ -217,10 +216,7 @@ function M.open_menu(bufnr)
 		filename = utils.get_current_buffer_path()
 	end
 
-	mode_context.setup({
-		close_menu = close_menu,
-		render_buffer = render_buffer,
-	})
+	mode_context.setup({ close_menu = close_menu })
 	mode_context.toggle_default_mode()
 
 	local menuBuf = create_menu_buffer(filename)
@@ -265,7 +261,7 @@ function M.open_menu(bufnr)
 				mode_context.toggle_save_mode()
 			end
 
-			render_buffer(menuBuf)
+			mode_context.render_buffer(menuBuf)
 			mode_context.render_highlights(menuBuf)
 		end, menuKeymapOpts)
 
@@ -307,7 +303,7 @@ function M.open_menu(bufnr)
 			mode_context.toggle_delete_mode()
 		end
 
-		render_buffer(menuBuf)
+		mode_context.render_buffer(menuBuf)
 		mode_context.render_highlights(menuBuf)
 	end, menuKeymapOpts)
 
@@ -320,7 +316,7 @@ function M.open_menu(bufnr)
 			mode_context.toggle_vertical_mode()
 		end
 
-		render_buffer(menuBuf)
+		mode_context.render_buffer(menuBuf)
 		mode_context.render_highlights(menuBuf)
 	end, menuKeymapOpts)
 
@@ -333,7 +329,7 @@ function M.open_menu(bufnr)
 			mode_context.toggle_horizontal_mode()
 		end
 
-		render_buffer(menuBuf)
+		mode_context.render_buffer(menuBuf)
 		mode_context.render_highlights(menuBuf)
 	end, menuKeymapOpts)
 

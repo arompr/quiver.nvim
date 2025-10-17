@@ -1,8 +1,7 @@
 local config = require("arrow.config")
 local store = require("arrow.bookmarks.store.state_store")
 local icons = require("arrow.integration.icons")
-local utils = require("arrow.utils")
-
+local ui_utils = require("arrow.bookmarks.ui_utils")
 local default_mode_render_strategy = require("arrow.bookmarks.render_strategy.default_mode_render_strategy")
 
 local Namespaces = require("arrow.bookmarks.namespaces_enum")
@@ -77,15 +76,12 @@ function M.render_buffer(buffer, setup_keymaps)
 
 	local arrows = store.arrows()
 	local filenames = store.filenames()
-	local formattedFilenames = utils.format_file_names(filenames)
+	local formattedFilenames = ui_utils.format_filenames(filenames)
 
 	store.clear_highlights()
 	store.set_current_index(0)
 
 	setup_keymaps({ buf = buf })
-	-- mode_context.setup_keymaps({
-	-- 	buf = buf,
-	-- })
 
 	-- Render arrows
 	for i, arrow in ipairs(arrows) do
@@ -158,12 +154,11 @@ function M.render_highlights(buffer)
 		vim.api.nvim_buf_add_highlight(menuBuf, -1, HighlightGroups.ACTION, i - 1, 3, 4)
 	end
 
-	local highlight_options = {
+	render_strategy.apply_highlights({
 		buffer = buffer,
 		arrows = arrows,
 		actionsMenu = actionsMenu,
-	}
-	render_strategy.apply_highlights(highlight_options)
+	})
 
 	local pattern = " %. .-$"
 	local line_number = 1

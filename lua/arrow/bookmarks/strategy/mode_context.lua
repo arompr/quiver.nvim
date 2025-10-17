@@ -1,3 +1,4 @@
+local config = require("arrow.config")
 local render = require("arrow.bookmarks.render")
 local default_mode_keymap_strategy = require("arrow.bookmarks.strategy.default_mode_strategy")
 local save_mode_keymap_strategy = require("arrow.bookmarks.strategy.save_mode_strategy")
@@ -15,22 +16,23 @@ local keymap_strategy = default_mode_keymap_strategy
 function M.setup(opts)
 	default_mode_keymap_strategy.setup({
 		close_menu = opts.close_menu,
-		render_buffer = opts.render_buffer,
+		render_buffer = M.render_buffer,
 		render_highlights = M.render_highlights,
 	})
 	save_mode_keymap_strategy.setup({
 		close_menu = opts.close_menu,
-		render_buffer = opts.render_buffer,
+		render_buffer = M.render_buffer,
 		render_highlights = M.render_highlights,
 	})
 	delete_mode_keymap_strategy.setup({
 		close_menu = opts.close_menu,
-		render_buffer = opts.render_buffer,
+		render_buffer = M.render_buffer,
 		render_highlights = M.render_highlights,
 	})
 end
 
 function M.toggle_default_mode()
+	default_mode_keymap_strategy.set_action(config.getState("open_action"))
 	keymap_strategy = default_mode_keymap_strategy
 	render.set_strategy(default_mode_render_strategy)
 end
@@ -46,11 +48,13 @@ function M.toggle_delete_mode()
 end
 
 function M.toggle_horizontal_mode()
+	default_mode_keymap_strategy.set_action(config.getState("horizontal_action"))
 	keymap_strategy = default_mode_keymap_strategy
 	render.set_strategy(horizontal_mode_render_strategy)
 end
 
 function M.toggle_vertical_mode()
+	default_mode_keymap_strategy.set_action(config.getState("vertical_action"))
 	keymap_strategy = default_mode_keymap_strategy
 	render.set_strategy(vertical_mode_render_strategy)
 end
