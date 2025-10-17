@@ -1,15 +1,16 @@
 local config = require("arrow.config")
 local store = require("arrow.bookmarks.store.state_store")
-local mode_context = require("arrow.bookmarks.strategy.mode_context")
 local icons = require("arrow.integration.icons")
 local utils = require("arrow.utils")
+
+local default_mode_render_strategy = require("arrow.bookmarks.render_strategy.default_mode_render_strategy")
+
+local Namespaces = require("arrow.bookmarks.namespaces_enum")
+local HighlightGroups = require("arrow.highlight_groups_enum")
 
 local M = {}
 
 local ns_id = vim.api.nvim_create_namespace("arrow")
-local ns_id_current_file = vim.api.nvim_create_namespace("ArrowCurrentFile")
-local ns_id_delete_mode = vim.api.nvim_create_namespace("ArrowDeleteMode")
-local ns_id_file_index = vim.api.nvim_create_namespace("ArrowFileIndex")
 
 ---@class HighlightStrategyOptions
 ---@field buffer integer
@@ -20,7 +21,11 @@ local ns_id_file_index = vim.api.nvim_create_namespace("ArrowFileIndex")
 ---@field apply_highlights fun(opts: HighlightStrategyOptions)
 
 ---@type HighlightStrategy
-local render_strategy = nil
+local render_strategy = default_mode_render_strategy
+
+function M.set_strategy(strategy)
+	render_strategy = strategy
+end
 
 local function get_actions_menu()
 	local mappings = config.getState("mappings")
@@ -60,7 +65,10 @@ local function get_actions_menu()
 	return return_mappings
 end
 
-function M.render_buffer(buffer)
+---comment
+---@param buffer any
+---@param setup_keymaps function
+function M.render_buffer(buffer, setup_keymaps)
 	vim.bo[buffer].modifiable = true
 
 	local show_icons = config.getState("show_icons")
@@ -74,9 +82,10 @@ function M.render_buffer(buffer)
 	store.clear_highlights()
 	store.set_current_index(0)
 
-	mode_context.setup_keymaps({
-		buf = buf,
-	})
+	setup_keymaps({ buf = buf })
+	-- mode_context.setup_keymaps({
+	-- 	buf = buf,
+	-- })
 
 	-- Render arrows
 	for i, arrow in ipairs(arrows) do
@@ -124,7 +133,6 @@ end
 
 function M.render_highlights(buffer)
 	local actionsMenu = get_actions_menu()
-	local mappings = config.getState("mappings")
 	local arrows = store.arrows()
 	local current_index = store.current_index()
 
@@ -132,14 +140,14 @@ function M.render_highlights(buffer)
 	local menuBuf = buffer or vim.api.nvim_get_current_buf()
 
 	local line = vim.api.nvim_buf_get_lines(menuBuf, current_index, current_index + 1, false)[1]
-	vim.api.nvim_buf_set_extmark(menuBuf, ns_id_current_file, current_index, 0, {
+	vim.api.nvim_buf_set_extmark(menuBuf, Namespaces.CURRENT_FILE, current_index, 0, {
 		end_col = #line,
-		hl_group = "ArrowCurrentFile",
+		hl_group = HighlightGroups.CURRENT_FILE,
 	})
 
 	if config.getState("show_icons") then
 		for k, v in pairs(store.highlights()) do
-			vim.api.nvim_buf_set_extmark(menuBuf, ns_id, k, 5, {
+			vim.api.nvim_buf_set_extmark(menuBuf, Namespaces.FILE_INDEX, k, 5, {
 				end_col = 8,
 				hl_group = v,
 			})
@@ -147,10 +155,7 @@ function M.render_highlights(buffer)
 	end
 
 	for i = #arrows + 3, #arrows + #actionsMenu + 3 do
-		vim.api.nvim_buf_set_extmark(menuBuf, ns_id, i - 1, 3, {
-			end_col = 4,
-			hl_group = "ArrowAction",
-		})
+		vim.api.nvim_buf_add_highlight(menuBuf, -1, HighlightGroups.ACTION, i - 1, 3, 4)
 	end
 
 	local highlight_options = {
@@ -167,10 +172,12 @@ function M.render_highlights(buffer)
 		local line_content = vim.api.nvim_buf_get_lines(menuBuf, line_number - 1, line_number, false)[1]
 
 		local match_start, match_end = string.find(line_content, pattern)
-		if match_start then
-			vim.api.nvim_buf_add_highlight(menuBuf, -1, "ArrowAction", line_number - 1, match_start - 1, match_end)
+		if match_start and match_end then
+			vim.api.nvim_buf_set_extmark(menuBuf, Namespaces.ACTION, line_number - 1, match_start - 1, {
+				end_col = match_end,
+				hl_group = HighlightGroups.ACTION,
+			})
 		end
-
 		line_number = line_number + 1
 	end
 end

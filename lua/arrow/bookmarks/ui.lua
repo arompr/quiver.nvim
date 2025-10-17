@@ -15,16 +15,11 @@ local go_to_next_arrow_usecase = require("arrow.bookmarks.usecase.navigation.go_
 local get_arrow_usecase = require("arrow.bookmarks.usecase.get_arrow_usecase")
 
 local mode_context = require("arrow.bookmarks.strategy.mode_context")
-local default_mode_strategy = require("arrow.bookmarks.strategy.default_mode_strategy")
-local save_mode_strategy = require("arrow.bookmarks.strategy.save_mode_strategy")
-local delete_mode_strategy = require("arrow.bookmarks.strategy.delete_mode_strategy")
+local render = require("arrow.bookmarks.render")
 
 local store = require("arrow.bookmarks.store.state_store")
 
 local ns_id = vim.api.nvim_create_namespace("arrow")
-local ns_id_current_file = vim.api.nvim_create_namespace("ArrowCurrentFile")
-local ns_id_delete_mode = vim.api.nvim_create_namespace("ArrowDeleteMode")
-local ns_id_file_index = vim.api.nvim_create_namespace("ArrowFileIndex")
 
 local function get_actions_menu()
 	local mappings = config.getState("mappings")
@@ -131,108 +126,6 @@ local function render_buffer(buffer)
 	vim.bo[buf].buftype = "nofile"
 end
 
-local function render_highlights(buffer)
-	local actionsMenu = get_actions_menu()
-	local mappings = config.getState("mappings")
-	local arrows = store.arrows()
-	local current_index = store.current_index()
-
-	vim.api.nvim_buf_clear_namespace(buffer, -1, 0, -1)
-	local menuBuf = buffer or vim.api.nvim_get_current_buf()
-
-	local line = vim.api.nvim_buf_get_lines(menuBuf, current_index, current_index + 1, false)[1]
-	vim.api.nvim_buf_set_extmark(menuBuf, ns_id_current_file, current_index, 0, {
-		end_col = #line,
-		hl_group = "ArrowCurrentFile",
-	})
-
-	for i, _ in ipairs(arrows) do
-		if vim.b.arrow_current_mode == "delete_mode" then
-			vim.api.nvim_buf_set_extmark(menuBuf, ns_id_delete_mode, i, 3, {
-				end_col = 4,
-				hl_group = "ArrowDeleteMode",
-			})
-		else
-			vim.api.nvim_buf_set_extmark(menuBuf, ns_id_file_index, i, 3, {
-				end_col = 4,
-				hl_group = "ArrowFileIndex",
-			})
-		end
-	end
-
-	if config.getState("show_icons") then
-		for k, v in pairs(store.highlights()) do
-			vim.api.nvim_buf_add_highlight(menuBuf, -1, v, k, 5, 8)
-		end
-	end
-
-	for i = #arrows + 3, #arrows + #actionsMenu + 3 do
-		vim.api.nvim_buf_add_highlight(menuBuf, -1, "ArrowAction", i - 1, 3, 4)
-	end
-
-	-- Find the line containing "d - Delete Mode"
-	local saveModeLine = -1
-	local deleteModeLine = -1
-	local verticalModeLine = -1
-	local horizontalModelLine = -1
-
-	for i, action in ipairs(actionsMenu) do
-		if action:find(mappings.toggle .. " Save Current File") then
-			saveModeLine = i - 1
-		end
-
-		if action:find(mappings.delete_mode .. " Delete Mode") then
-			deleteModeLine = i - 1
-		end
-
-		if action:find(mappings.open_vertical .. " Open Vertical") then
-			verticalModeLine = i - 1
-		end
-
-		if action:find(mappings.open_horizontal .. " Open Horizontal") then
-			horizontalModelLine = i - 1
-		end
-	end
-
-	if saveModeLine >= 0 then
-		if vim.b.arrow_current_mode == "save_mode" then
-			vim.api.nvim_buf_add_highlight(menuBuf, -1, "ArrowSaveMode", #arrows + saveModeLine + 2, 0, -1)
-		end
-	end
-
-	if deleteModeLine >= 0 then
-		if vim.b.arrow_current_mode == "delete_mode" then
-			vim.api.nvim_buf_add_highlight(menuBuf, -1, "ArrowDeleteMode", #arrows + deleteModeLine + 2, 0, -1)
-		end
-	end
-
-	if verticalModeLine >= 0 then
-		if vim.b.arrow_current_mode == "vertical_mode" then
-			vim.api.nvim_buf_add_highlight(menuBuf, -1, "ArrowAction", #arrows + verticalModeLine + 2, 0, -1)
-		end
-	end
-
-	if horizontalModelLine >= 0 then
-		if vim.b.arrow_current_mode == "horizontal_mode" then
-			vim.api.nvim_buf_add_highlight(menuBuf, -1, "ArrowAction", #arrows + horizontalModelLine + 2, 0, -1)
-		end
-	end
-
-	local pattern = " %. .-$"
-	local line_number = 1
-
-	while line_number <= #arrows + 1 do
-		local line_content = vim.api.nvim_buf_get_lines(menuBuf, line_number - 1, line_number, false)[1]
-
-		local match_start, match_end = string.find(line_content, pattern)
-		if match_start then
-			vim.api.nvim_buf_add_highlight(menuBuf, -1, "ArrowAction", line_number - 1, match_start - 1, match_end)
-		end
-
-		line_number = line_number + 1
-	end
-end
-
 -- Function to create the menu buffer with a list format
 local function create_menu_buffer(filename)
 	local buf = vim.api.nvim_create_buf(false, true)
@@ -324,22 +217,11 @@ function M.open_menu(bufnr)
 		filename = utils.get_current_buffer_path()
 	end
 
-	default_mode_strategy.setup({
+	mode_context.setup({
 		close_menu = close_menu,
 		render_buffer = render_buffer,
-		render_highlights = render_highlights,
 	})
-	save_mode_strategy.setup({
-		close_menu = close_menu,
-		render_buffer = render_buffer,
-		render_highlights = render_highlights,
-	})
-	delete_mode_strategy.setup({
-		render_buffer = render_buffer,
-		render_highlights = render_highlights,
-	})
-
-	mode_context.set_strategy(default_mode_strategy)
+	mode_context.toggle_default_mode()
 
 	local menuBuf = create_menu_buffer(filename)
 
@@ -377,16 +259,14 @@ function M.open_menu(bufnr)
 			filename = filename or utils.get_current_buffer_path()
 			if vim.b.arrow_current_mode == "save_mode" then
 				vim.b.arrow_current_mode = ""
-				mode_context.set_strategy(default_mode_strategy)
+				mode_context.toggle_default_mode()
 			else
 				vim.b.arrow_current_mode = "save_mode"
-				mode_context.set_strategy(save_mode_strategy)
+				mode_context.toggle_save_mode()
 			end
 
 			render_buffer(menuBuf)
-			render_highlights(menuBuf)
-			-- save_arrow_usecase.save_arrow(filename)
-			-- closeMenu()
+			mode_context.render_highlights(menuBuf)
 		end, menuKeymapOpts)
 
 		vim.keymap.set("n", mappings.remove, function()
@@ -421,36 +301,40 @@ function M.open_menu(bufnr)
 	vim.keymap.set("n", mappings.delete_mode, function()
 		if vim.b.arrow_current_mode == "delete_mode" then
 			vim.b[menuBuf].arrow_current_mode = ""
-			mode_context.set_strategy(default_mode_strategy)
+			mode_context.toggle_default_mode()
 		else
 			vim.b[menuBuf].arrow_current_mode = "delete_mode"
-			mode_context.set_strategy(delete_mode_strategy)
+			mode_context.toggle_delete_mode()
 		end
 
 		render_buffer(menuBuf)
-		render_highlights(menuBuf)
+		mode_context.render_highlights(menuBuf)
 	end, menuKeymapOpts)
 
 	vim.keymap.set("n", mappings.open_vertical, function()
 		if vim.b.arrow_current_mode == "vertical_mode" then
 			vim.b.arrow_current_mode = ""
+			mode_context.toggle_default_mode()
 		else
 			vim.b.arrow_current_mode = "vertical_mode"
+			mode_context.toggle_vertical_mode()
 		end
 
 		render_buffer(menuBuf)
-		render_highlights(menuBuf)
+		mode_context.render_highlights(menuBuf)
 	end, menuKeymapOpts)
 
 	vim.keymap.set("n", mappings.open_horizontal, function()
 		if vim.b.arrow_current_mode == "horizontal_mode" then
 			vim.b.arrow_current_mode = ""
+			mode_context.toggle_default_mode()
 		else
 			vim.b.arrow_current_mode = "horizontal_mode"
+			mode_context.toggle_horizontal_mode()
 		end
 
 		render_buffer(menuBuf)
-		render_highlights(menuBuf)
+		mode_context.render_highlights(menuBuf)
 	end, menuKeymapOpts)
 
 	vim.api.nvim_set_hl(0, "ArrowCursor", { nocombine = true, blend = 100 })
@@ -475,7 +359,7 @@ function M.open_menu(bufnr)
 
 	vim.api.nvim_set_current_win(win)
 
-	render_highlights(menuBuf)
+	mode_context.render_highlights(menuBuf)
 end
 
 -- Command to trigger the menu

@@ -3,6 +3,8 @@ local HighlightGroups = require("arrow.highlight_groups_enum")
 
 local M = {}
 
+---Default mode highlight render strategy
+---@param opts HighlightStrategyOptions
 function M.apply_highlights(opts)
 	local menuBuf = opts.buffer or vim.api.nvim_get_current_buf()
 

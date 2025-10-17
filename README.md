@@ -15,10 +15,11 @@ That’s why I created **quiver.nvim**:
 - If you don’t care about fixed keys, Arrow is probably what you are looking for.  
 
 ## Todos
-- [] Fix go next/prev 
+- [] Fix go next/prev
 - [] Add toggle to next available key functionality
 - [] Add reassign to key functionality
 - [] Add assignable keys to menu
+- [] Rework separate_save_and_remove mode (no separate_save_and_remove now makes no functional sens)
 
 ## Installation
 
