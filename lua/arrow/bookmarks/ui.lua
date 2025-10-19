@@ -4,9 +4,8 @@ local config = require("arrow.config")
 local utils = require("arrow.utils")
 local ui_utils = require("arrow.bookmarks.ui_utils")
 local git = require("arrow.git")
-local icons = require("arrow.integration.icons")
 
-local edit_mode_usecase = require("arrow.bookmarks.usecase.edit_mode_usecase")
+local reorder_arrows_usecase = require("arrow.bookmarks.usecase.reorder_arrows_usecase")
 local remove_arrow_usecase = require("arrow.bookmarks.usecase.remove_arrow_usecase")
 local toggle_arrow_usecase = require("arrow.bookmarks.usecase.toggle_arrow_usecase")
 local clear_arrows_usecase = require("arrow.bookmarks.usecase.clear_arrows_usecase")
@@ -18,111 +17,9 @@ local mode_context = require("arrow.bookmarks.strategy.mode_context")
 
 local store = require("arrow.bookmarks.store.state_store")
 
-local ns_id = vim.api.nvim_create_namespace("arrow")
-
-local function get_actions_menu()
-	local mappings = config.getState("mappings")
-
-	if #store.arrows() == 0 then
-		return {
-			string.format("%s Save File", mappings.toggle),
-		}
-	end
-
-	local already_saved = store.current_index() > 0
-
-	local separate_save_and_remove = config.getState("separate_save_and_remove")
-
-	local return_mappings = {
-		string.format("%s Edit Arrow File", mappings.edit),
-		string.format("%s Clear All Items", mappings.clear_all_items),
-		string.format("%s Delete Mode", mappings.delete_mode),
-		string.format("%s Open Vertical", mappings.open_vertical),
-		string.format("%s Open Horizontal", mappings.open_horizontal),
-		string.format("%s Next Item", mappings.next_item),
-		string.format("%s Prev Item", mappings.prev_item),
-		string.format("%s Quit", mappings.quit),
-	}
-
-	if separate_save_and_remove then
-		table.insert(return_mappings, 1, string.format("%s Remove Current File", mappings.remove))
-		table.insert(return_mappings, 1, string.format("%s Save Current File", mappings.toggle))
-	else
-		if already_saved == true then
-			table.insert(return_mappings, 1, string.format("%s Remove Current File", mappings.toggle))
-		else
-			table.insert(return_mappings, 1, string.format("%s Save Current File", mappings.toggle))
-		end
-	end
-
-	return return_mappings
-end
-
 local function close_menu()
 	local win = vim.fn.win_getid()
 	vim.api.nvim_win_close(win, true)
-end
-
-local function render_buffer(buffer)
-	vim.bo[buffer].modifiable = true
-
-	local show_icons = config.getState("show_icons")
-	local buf = buffer or vim.api.nvim_get_current_buf()
-	local lines = { "" }
-
-	local arrows = store.arrows()
-	local filenames = store.filenames()
-	local formattedFilenames = ui_utils.format_filenames(filenames)
-
-	store.clear_highlights()
-	store.set_current_index(0)
-
-	mode_context.setup_keymaps({
-		buf = buf,
-	})
-
-	-- Render arrows
-	for i, arrow in ipairs(arrows) do
-		vim.highlight.range(buf, ns_id, "ArrowDeleteMode", { i + 3, 0 }, { i + 3, -1 })
-
-		local parsed_filename = filenames[i]
-		if parsed_filename:sub(1, 2) == "./" then
-			parsed_filename = parsed_filename:sub(3)
-		end
-
-		if parsed_filename == vim.b[buf].filename then
-			store.set_current_index(i)
-		end
-
-		local fileName = formattedFilenames[i]
-		if show_icons then
-			local icon, hl_group = icons.get_file_icon(filenames[i])
-			store.add_highlight(hl_group)
-			fileName = icon .. " " .. fileName
-		end
-
-		table.insert(lines, string.format("   %s %s", arrow.key, fileName))
-	end
-
-	-- Handle empty list
-	if #store.arrows() == 0 then
-		table.insert(lines, "   No files yet.")
-	end
-
-	table.insert(lines, "")
-
-	local actionsMenu = get_actions_menu()
-	if not config.getState("hide_handbook") then
-		for _, action in ipairs(actionsMenu) do
-			table.insert(lines, "   " .. action)
-		end
-	end
-
-	table.insert(lines, "")
-
-	vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-	vim.bo[buffer].modifiable = false
-	vim.bo[buf].buftype = "nofile"
 end
 
 -- Function to create the menu buffer with a list format
@@ -201,6 +98,72 @@ function M.get_window_config()
 	return res
 end
 
+local function open_edit_mode()
+	git.refresh_git_branch()
+
+	local arrow_filenames = store.filenames()
+
+	if config.getState("relative_path") == true and config.getState("global_bookmarks") == false then
+		for i, line in ipairs(arrow_filenames) do
+			if not line:match("^%./") and not utils.string_contains_whitespace(line) and #arrow_filenames[i] > 1 then
+				arrow_filenames[i] = "./" .. line
+			end
+		end
+	end
+
+	local bufnr = vim.api.nvim_create_buf(false, true)
+
+	vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, arrow_filenames)
+
+	local width = math.min(80, vim.fn.winwidth(0) - 4)
+	local height = math.min(20, #arrow_filenames + 2)
+
+	local row = math.ceil((vim.o.lines - height) / 2)
+	local col = math.ceil((vim.o.columns - width) / 2)
+
+	local border = config.getState("window").border
+
+	local opts = {
+		style = "minimal",
+		relative = "editor",
+		width = width,
+		height = height,
+		row = row,
+		col = col,
+		focusable = true,
+		border = border,
+	}
+
+	local winid = vim.api.nvim_open_win(bufnr, true, opts)
+
+	local mappings = config.getState("mappings")
+	local close_buffer = ":lua vim.api.nvim_win_close(" .. winid .. ", {force = true})<CR>"
+	vim.api.nvim_buf_set_keymap(bufnr, "n", "q", close_buffer, { noremap = true, silent = true })
+	vim.api.nvim_buf_set_keymap(bufnr, "n", mappings.quit, close_buffer, { noremap = true, silent = true })
+	vim.api.nvim_buf_set_keymap(bufnr, "n", "<Esc>", close_buffer, { noremap = true, silent = true })
+	vim.keymap.set("n", config.getState("leader_key"), close_buffer, { noremap = true, silent = true, buffer = bufnr })
+
+	vim.keymap.set("n", "<CR>", function()
+		local line = vim.api.nvim_get_current_line()
+
+		vim.api.nvim_win_close(winid, true)
+		vim.cmd(":edit " .. vim.fn.fnameescape(line))
+	end, { noremap = true, silent = true, buffer = bufnr })
+
+	vim.api.nvim_create_autocmd("BufLeave", {
+		buffer = bufnr,
+		desc = "save cache buffer on leave",
+		callback = function()
+			local filenames = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+			reorder_arrows_usecase.reorder(filenames)
+		end,
+	})
+
+	vim.cmd("setlocal nu")
+
+	return bufnr, winid
+end
+
 function M.open_menu(bufnr)
 	git.refresh_git_branch()
 
@@ -247,7 +210,7 @@ function M.open_menu(bufnr)
 	vim.keymap.set("n", mappings.quit, close_menu, menuKeymapOpts)
 	vim.keymap.set("n", mappings.edit, function()
 		close_menu()
-		edit_mode_usecase.open_edit_mode()
+		open_edit_mode()
 	end, menuKeymapOpts)
 
 	if separate_save_and_remove then

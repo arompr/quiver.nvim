@@ -3,6 +3,7 @@ local file_quiver = require("arrow.persistence.file_quiver")
 
 local M = {}
 
+---@param arrow Arrow
 function M.save(arrow)
 	in_memory_quiver.save(arrow)
 end

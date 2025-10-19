@@ -4,8 +4,8 @@ local config = require("arrow.config")
 local M = {}
 
 function M.go_to(index)
-	local filename = cache_quiver.fetch_by_index(index)
-	if not filename then
+	local arrow = cache_quiver.fetch_by_index(index)
+	if not arrow then
 		return
 	end
 
@@ -14,9 +14,9 @@ function M.go_to(index)
 		or config.getState("save_key_name") == "cwd"
 		or config.getState("save_key_name") == "git_root_bare"
 	then
-		vim.cmd(":edit " .. filename)
+		vim.cmd(":edit " .. arrow.filename)
 	else
-		vim.cmd(":edit " .. config.getState("save_key_cached") .. "/" .. filename)
+		vim.cmd(":edit " .. config.getState("save_key_cached") .. "/" .. arrow.filename)
 	end
 end
 
