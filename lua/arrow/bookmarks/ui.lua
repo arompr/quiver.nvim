@@ -17,6 +17,9 @@ local mode_context = require("arrow.bookmarks.strategy.mode_context")
 
 local store = require("arrow.bookmarks.store.state_store")
 
+local Style = require("arrow.bookmarks.style")
+local Padding = Style.Padding
+
 local function close_menu()
 	local win = vim.fn.win_getid()
 	vim.api.nvim_win_close(win, true)
@@ -57,11 +60,17 @@ function M.get_window_config()
 	local height = #filenames + 2
 
 	if show_handbook then
-		height = height + 10
+		height = height + 12
 		if separate_save_and_remove then
 			height = height + 1
 		end
 	end
+
+	local available_width = width - (2 * #Padding.m)
+	local wrapped_line_keys = ui_utils.wrap_str_to_length(config.getState("index_keys"), available_width)
+	store.set_line_keys(wrapped_line_keys)
+
+	height = height + #wrapped_line_keys
 
 	local current_config = {
 		width = width,
@@ -182,9 +191,9 @@ function M.open_menu(bufnr)
 	mode_context.setup({ close_menu = close_menu })
 	mode_context.toggle_default_mode()
 
-	local menuBuf = create_menu_buffer(filename)
-
 	local window_config = M.get_window_config()
+
+	local menuBuf = create_menu_buffer(filename)
 
 	local win = vim.api.nvim_open_win(menuBuf, true, window_config)
 

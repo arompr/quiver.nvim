@@ -6,6 +6,8 @@ local default_mode_render_strategy = require("arrow.bookmarks.render_strategy.de
 
 local Namespaces = require("arrow.bookmarks.namespaces_enum")
 local HighlightGroups = require("arrow.highlight_groups_enum")
+local Style = require("arrow.bookmarks.style")
+local Padding = Style.Padding
 
 local M = {}
 
@@ -103,12 +105,12 @@ function M.render_buffer(buffer, setup_keymaps)
 			fileName = icon .. " " .. fileName
 		end
 
-		table.insert(lines, string.format("   %s %s", arrow.key, fileName))
+		table.insert(lines, string.format(Padding.m .. "%s %s", arrow.key, fileName))
 	end
 
 	-- Handle empty list
 	if #store.arrows() == 0 then
-		table.insert(lines, "   No files yet.")
+		table.insert(lines, Padding.m .. "No files yet.")
 	end
 
 	table.insert(lines, "")
@@ -116,11 +118,16 @@ function M.render_buffer(buffer, setup_keymaps)
 	local actionsMenu = get_actions_menu()
 	if not config.getState("hide_handbook") then
 		for _, action in ipairs(actionsMenu) do
-			table.insert(lines, "   " .. action)
+			table.insert(lines, Padding.m .. action)
 		end
 	end
 
 	table.insert(lines, "")
+	table.insert(lines, Padding.m .. "Keys")
+
+	for _, wrapped_line in ipairs(store.line_keys()) do
+		table.insert(lines, Padding.m .. wrapped_line)
+	end
 
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
 	vim.bo[buffer].modifiable = false

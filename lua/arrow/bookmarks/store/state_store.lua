@@ -2,17 +2,32 @@ local cache_quiver = require("arrow.persistence.cache_quiver")
 
 local M = {}
 
+---@class WindowConfig
+---@field col integer
+---@field height integer
+---@field row integer
+---@field width integer
+
+---@return WindowConfig
+local function new_window_config()
+	return { col = 0, height = 0, row = 0, width = 0 }
+end
+
 ---@class State
----@field arrows Arrow[]           # List of arrows in memory
----@field arrow_filenames string[] # Corresponding filenames
----@field highlights string[]      # Highlight info
----@field current_index integer    # Currently selected index
+---@field arrows Arrow[]		# List of arrows in memory
+---@field arrow_filenames string[]	# Corresponding filenames
+---@field highlights string[]		# Highlight info
+---@field current_index integer		# Currently selected index
+---@field current_window_config WindowConfig	# Current quiver window config
+---@field line_keys string[]
 ---@type State
 local state = {
 	arrows = {},
 	arrow_filenames = {},
 	highlights = {},
 	current_index = 0,
+	current_window_config = new_window_config(),
+	line_keys = {},
 }
 
 local function to_filenames(arrows)
@@ -60,6 +75,16 @@ function M.set_current_index(index)
 	state.current_index = index
 end
 
+---@param window_config WindowConfig
+function M.set_window_config(window_config)
+	state.current_window_config = window_config
+end
+
+---@param new_line_keys string[]
+function M.set_line_keys(new_line_keys)
+	state.line_keys = new_line_keys
+end
+
 M.arrows = function()
 	return state.arrows
 end
@@ -74,6 +99,14 @@ end
 
 M.current_index = function()
 	return state.current_index
+end
+
+M.window_config = function()
+	return state.current_window_config
+end
+
+M.line_keys = function()
+	return state.line_keys
 end
 
 return M

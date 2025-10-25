@@ -130,4 +130,25 @@ function M.format_filenames(filenames)
 	return formatted_names
 end
 
+-- Wrap str based on available width minus padding
+function M.wrap_str_to_length(str, max_length)
+	-- base case: if string is shorter than or equal to max_length
+	if #str <= max_length then
+		return { str }
+	end
+
+	-- take first max_length characters as the current line
+	local line = str:sub(1, max_length)
+	-- remaining str after current line
+	local remaining = str:sub(max_length + 1)
+
+	-- recursively wrap the remaining str
+	local rest = M.wrap_str_to_length(remaining, max_length)
+
+	-- prepend current line to the list
+	table.insert(rest, 1, line)
+
+	return rest
+end
+
 return M
