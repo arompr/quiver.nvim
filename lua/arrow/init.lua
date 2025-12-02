@@ -8,6 +8,8 @@ local git = require("arrow.git")
 local commands = require("arrow.commands")
 local save_keys = require("arrow.save_keys")
 
+local Action = require("arrow.actions")
+
 M.config = {}
 
 function M.setup(opts)
@@ -25,16 +27,16 @@ function M.setup(opts)
 	}
 
 	local default_mappings = {
-		edit = "e",
-		delete_mode = "d",
-		clear_all_items = "C",
-		toggle = "s",
-		open_vertical = "v",
-		open_horizontal = "-",
-		quit = "q",
-		remove = "x",
-		next_item = "]",
-		prev_item = "[",
+		[Action.EDIT] = "E",
+		[Action.DELETE] = "D",
+		[Action.CLEAR_ALL] = "C",
+		[Action.SAVE] = "S",
+		[Action.OPEN_VERTICAL] = "V",
+		[Action.OPEN_HORIZONTAL] = "H",
+		[Action.QUIT] = "Q",
+		[Action.REMOVE] = "R",
+		[Action.NEXT_ITEM] = "]",
+		[Action.PREV_ITEM] = "[",
 	}
 
 	local default_window_config = {

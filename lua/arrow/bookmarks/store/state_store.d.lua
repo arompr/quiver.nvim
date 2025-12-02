@@ -1,0 +1,7 @@
+---@class State
+---@field arrows LayoutArrow[]       # List of arrows in layout
+---@field arrow_filenames string[]   # Corresponding filenames
+---@field highlights string[]        # Highlight info
+---@field current_index integer      # Currently selected index
+---@field line_keys string[]         # Keys rendered on screen
+---@field layout LayoutBuilder       # Layout information

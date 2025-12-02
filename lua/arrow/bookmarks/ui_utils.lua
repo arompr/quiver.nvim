@@ -3,42 +3,45 @@ local store = require("arrow.bookmarks.store.state_store")
 
 local M = {}
 
-function M.get_actions_menu()
-	local mappings = config.getState("mappings")
+---@param filename string
+---@return string
+function M.format_filename(filename)
+	local full_path_list = config.getState("full_path_list")
+	local always_show_path = config.getState("always_show_path")
 
-	if #store.arrows() == 0 then
-		return {
-			string.format("%s Save File", mappings.toggle),
-		}
+	-- Detect whether it's a directory
+	local is_dir = vim.fn.isdirectory(filename) == 1
+	local tail = vim.fn.fnamemodify(filename, ":t:r")
+	local tail_with_extension = vim.fn.fnamemodify(filename, ":t")
+
+	-- Normalize trailing slash for directories
+	if is_dir and not filename:match("/$") then
+		filename = filename .. "/"
 	end
 
-	local already_saved = store.current_index() > 0
+	if is_dir then
+		local path = vim.fn.fnamemodify(filename, ":h")
+		local splitted_path = vim.split(path, "/")
+		local folder_name = splitted_path[#splitted_path]
 
-	local separate_save_and_remove = config.getState("separate_save_and_remove")
+		local location = vim.fn.fnamemodify(filename, ":h:h")
 
-	local return_mappings = {
-		string.format("%s Edit Arrow File", mappings.edit),
-		string.format("%s Clear All Items", mappings.clear_all_items),
-		string.format("%s Delete Mode", mappings.delete_mode),
-		string.format("%s Open Vertical", mappings.open_vertical),
-		string.format("%s Open Horizontal", mappings.open_horizontal),
-		string.format("%s Next Item", mappings.next_item),
-		string.format("%s Prev Item", mappings.prev_item),
-		string.format("%s Quit", mappings.quit),
-	}
-
-	if separate_save_and_remove then
-		table.insert(return_mappings, 1, string.format("%s Remove Current File", mappings.remove))
-		table.insert(return_mappings, 1, string.format("%s Save Current File", mappings.toggle))
-	else
-		if already_saved == true then
-			table.insert(return_mappings, 1, string.format("%s Remove Current File", mappings.toggle))
+		if always_show_path then
+			return string.format("%s/ . %s", folder_name, location)
 		else
-			table.insert(return_mappings, 1, string.format("%s Save Current File", mappings.toggle))
+			return string.format("%s/", folder_name)
+		end
+	else
+		local path = vim.fn.fnamemodify(filename, ":h")
+		local display_path = path
+
+		-- If this filename (without extension) is in the full_path_list, show path
+		if vim.tbl_contains(full_path_list, tail) or always_show_path then
+			return string.format("%s . %s", tail_with_extension, display_path)
+		else
+			return tail_with_extension
 		end
 	end
-
-	return return_mappings
 end
 
 ---@param filenames string[]
@@ -149,6 +152,129 @@ function M.wrap_str_to_length(str, max_length)
 	table.insert(rest, 1, line)
 
 	return rest
+end
+
+--- Smart dynamic truncation: prefix ... suffix.extension
+--- @param filename string
+--- @param max_width integer
+--- @param min_prefix integer? default=5
+--- @param min_suffix integer? default=5
+--- @return string
+function M.smart_truncate(filename, max_width, min_prefix, min_suffix)
+	min_prefix = min_prefix or 5
+	min_suffix = min_suffix or 5
+
+	if #filename <= max_width then
+		return filename
+	end
+
+	-- Extract extension
+	local basename, extension = filename:match("^(.*)%.([^%.]+)$")
+	if not basename then
+		basename = filename
+		extension = ""
+	end
+
+	local ext_len = #extension > 0 and (#extension + 1) or 0 -- include dot
+	local ellipsis = "…"
+	local ell_len = 1
+
+	-- available for prefix+suffix
+	local remaining = max_width - ext_len - ell_len
+	if remaining <= 0 then
+		return filename:sub(1, max_width - ell_len) .. ellipsis
+	end
+
+	-- compute prefix/suffix split
+	local prefix_len = math.floor(remaining * 0.6)
+	local suffix_len = remaining - prefix_len
+
+	-- enforce minimums
+	if prefix_len < min_prefix then
+		prefix_len = min_prefix
+	end
+	if suffix_len < min_suffix then
+		suffix_len = min_suffix
+	end
+
+	-- adjust if sum is too large
+	if prefix_len + suffix_len > remaining then
+		-- reduce suffix first, then prefix
+		local excess = prefix_len + suffix_len - remaining
+		suffix_len = math.max(min_suffix, suffix_len - excess)
+		if prefix_len + suffix_len > remaining then
+			prefix_len = math.max(min_prefix, remaining - suffix_len)
+		end
+	end
+
+	local prefix = basename:sub(1, prefix_len)
+	local suffix = basename:sub(-suffix_len)
+
+	if #extension > 0 then
+		return prefix .. ellipsis .. suffix .. "." .. extension
+	else
+		return prefix .. ellipsis .. suffix
+	end
+end
+
+--- Split filename at the dots: returns { "name", "ext1", "ext2", ... }
+local function split_parts(filename)
+	local parts = {}
+	for part in filename:gmatch("[^%.]+") do
+		table.insert(parts, part)
+	end
+	return parts
+end
+
+--- Smart truncation:
+--- prefix….ext1.ext2.ext3  (ellipsis + dot)
+---
+--- @param filename string
+--- @param max_width integer
+--- @param min_prefix integer? default=5
+--- @return string
+function M.truncate_keep_ext_progressive(filename, max_width, min_prefix)
+	min_prefix = min_prefix or 5
+	if #filename <= max_width then
+		return filename
+	end
+
+	local ellipsis = "…." -- NOTE: Unicode ellipsis + dot
+	local ell_len = 2 -- "….": length 2
+
+	-- Split filename: { basename, ext1, ext2, ... }
+	local parts = split_parts(filename)
+	if #parts == 1 then
+		-- no extension, fallback
+		return filename:sub(1, max_width - ell_len) .. ellipsis
+	end
+
+	local basename = table.remove(parts, 1)
+
+	-- Try progressively shorter extension suffixes
+	for start_i = 1, #parts do
+		local suffix = table.concat({ unpack(parts, start_i) }, ".")
+		suffix = suffix -- no leading dot; the leading dot comes from ellipsis
+		local full_suffix = ellipsis .. suffix
+
+		local remain_for_prefix = max_width - #full_suffix
+		if remain_for_prefix >= min_prefix then
+			local prefix = basename:sub(1, remain_for_prefix)
+			return prefix .. full_suffix
+		end
+	end
+
+	-- Fallback: try only last extension (like "js")
+	local suffix = parts[#parts]
+	local full_suffix = ellipsis .. suffix
+	local available = max_width - #full_suffix
+
+	if available >= min_prefix then
+		return basename:sub(1, available) .. full_suffix
+	end
+
+	-- Total fallback: brute cut
+	return filename:sub(1, max_width - ell_len) .. ellipsis
 end
 
 return M

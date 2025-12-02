@@ -20,7 +20,6 @@ function M.toggle(filename)
 		cache_quiver.persist_arrows()
 	end
 
-	store.set_arrows(cache_quiver.fetch_arrows())
 	events.notify()
 end
 

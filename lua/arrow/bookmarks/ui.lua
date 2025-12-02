@@ -12,11 +12,14 @@ local clear_arrows_usecase = require("arrow.bookmarks.usecase.clear_arrows_useca
 local go_to_previous_arrow_usecase = require("arrow.bookmarks.usecase.navigation.go_to_previous_arrow_usecase")
 local go_to_next_arrow_usecase = require("arrow.bookmarks.usecase.navigation.go_to_next_arrow_usecase")
 local get_arrow_usecase = require("arrow.bookmarks.usecase.get_arrow_usecase")
+local get_free_keys_usecase = require("arrow.bookmarks.usecase.get_available_keys_usecase")
 
 local mode_context = require("arrow.bookmarks.strategy.mode_context")
 
 local store = require("arrow.bookmarks.store.state_store")
 
+local LayoutBuilder = require("arrow.bookmarks.layout.layout_builder")
+local MenuItems = require("arrow.menu_items")
 local Style = require("arrow.bookmarks.style")
 local Padding = Style.Padding
 
@@ -37,24 +40,68 @@ local function create_menu_buffer(filename)
 	return buf
 end
 
+function M.create_layout()
+	local arrows = get_arrow_usecase.get_arrows()
+
+	local layout = LayoutBuilder.new()
+	layout.add_breakline()
+	for _, arrow in ipairs(arrows) do
+		local parsed_filename = arrow.filename
+		if parsed_filename:sub(1, 2) == "./" then
+			parsed_filename = parsed_filename:sub(3)
+		end
+
+		local fileName = ui_utils.format_filename(arrow.filename)
+
+		layout.add_arrow(fileName, arrow.key)
+	end
+
+	layout.add_breakline()
+
+	if not config.getState("hide_handbook") then
+		layout
+			.add_menu(MenuItems.SAVE.label, MenuItems.SAVE.id)
+			.add_menu(MenuItems.REMOVE.label, MenuItems.REMOVE.id)
+			.add_menu(MenuItems.EDIT.label, MenuItems.EDIT.id)
+			.add_menu(MenuItems.CLEAR_ALL.label, MenuItems.CLEAR_ALL.id)
+			.add_menu(MenuItems.DELETE.label, MenuItems.DELETE.id)
+			.add_menu(MenuItems.OPEN_VERTICAL.label, MenuItems.OPEN_VERTICAL.id)
+			.add_menu(MenuItems.OPEN_HORIZONTAL.label, MenuItems.OPEN_HORIZONTAL.id)
+			.add_menu(MenuItems.NEXT_ITEM.label, MenuItems.NEXT_ITEM.id)
+			.add_menu(MenuItems.PREV_ITEM.label, MenuItems.PREV_ITEM.id)
+			.add_menu(MenuItems.QUIT.label, MenuItems.QUIT.id)
+
+		layout.add_breakline()
+
+		layout.add_title("Keys")
+		local line_keys = store.line_keys()
+		for index, value in ipairs(line_keys) do
+			local key = "line_key_" .. index
+			layout.add_line_key(value, key)
+		end
+	end
+
+	return layout
+end
+
 function M.get_window_config()
 	local show_handbook = not (config.getState("hide_handbook"))
 	local filenames = store.filenames()
-	local parsedFileNames = ui_utils.format_filenames(filenames)
+	-- local parsedFileNames = ui_utils.format_filenames(filenames)
 	local separate_save_and_remove = config.getState("separate_save_and_remove")
 
 	local max_width = 0
 	if show_handbook then
-		max_width = 13
+		max_width = 20
 		if separate_save_and_remove then
 			max_width = max_width + 2
 		end
 	end
-	for _, v in pairs(parsedFileNames) do
-		if #v > max_width then
-			max_width = #v
-		end
-	end
+	-- for _, v in pairs(parsedFileNames) do
+	-- 	if #v > max_width then
+	-- 		max_width = #v
+	-- 	end
+	-- end
 
 	local width = max_width + 12
 	local height = #filenames + 2
@@ -79,6 +126,8 @@ function M.get_window_config()
 		col = math.ceil((vim.o.columns - width) / 2),
 	}
 
+	local layout = M.create_layout()
+	store.set_layout(layout)
 	local is_empty = #store.arrows() == 0
 
 	if is_empty and show_handbook then
@@ -179,7 +228,6 @@ function M.open_menu(bufnr)
 	local call_buffer = bufnr or vim.api.nvim_get_current_buf()
 
 	store.clear_highlights()
-	store.set_arrows(get_arrow_usecase.get_arrows())
 
 	local filename
 	if config.getState("global_bookmarks") == true then
@@ -188,11 +236,12 @@ function M.open_menu(bufnr)
 		filename = utils.get_current_buffer_path()
 	end
 
+	store.set_arrows(get_arrow_usecase.get_arrows())
 	mode_context.setup({ close_menu = close_menu })
 	mode_context.toggle_default_mode()
 
 	local window_config = M.get_window_config()
-
+	store.set_window_config(window_config)
 	local menuBuf = create_menu_buffer(filename)
 
 	local win = vim.api.nvim_open_win(menuBuf, true, window_config)
@@ -223,7 +272,7 @@ function M.open_menu(bufnr)
 	end, menuKeymapOpts)
 
 	if separate_save_and_remove then
-		vim.keymap.set("n", mappings.toggle, function()
+		vim.keymap.set("n", mappings.save, function()
 			filename = filename or utils.get_current_buffer_path()
 			if vim.b.arrow_current_mode == "save_mode" then
 				vim.b.arrow_current_mode = ""
