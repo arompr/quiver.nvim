@@ -15,7 +15,7 @@ local M = {}
 
 ---@class HighlightStrategyOptions
 ---@field buffer integer
----@field arrows LayoutArrow[]
+---@field arrows LayoutItem[]
 ---@field actionsMenu LayoutItem[]
 
 ---@class HighlightStrategy
@@ -28,8 +28,54 @@ function M.set_strategy(strategy)
 	render_strategy = strategy
 end
 
+local function add_keys_section(layout)
+	layout.add_title("Keys")
+	local available_width = config.getState("window").width - (2 * #Style.Padding.m)
+	local wrapped_line_keys = ui_utils.wrap_str_to_length(config.getState("index_keys"), available_width)
+	store.set_line_keys(wrapped_line_keys)
+	for index, value in ipairs(wrapped_line_keys) do
+		local key = "line_key_" .. index
+		layout.add_line_key(value, key)
+	end
+	layout.add_breakline()
+	return layout
+end
+
+local function add_handbook_menu(layout)
+	layout
+		.add_menu(MenuItems.SAVE.label, MenuItems.SAVE.id)
+		.add_menu(MenuItems.REMOVE.label, MenuItems.REMOVE.id)
+		.add_menu(MenuItems.EDIT.label, MenuItems.EDIT.id)
+		.add_menu(MenuItems.CLEAR_ALL.label, MenuItems.CLEAR_ALL.id)
+		.add_menu(MenuItems.DELETE.label, MenuItems.DELETE.id)
+		.add_menu(MenuItems.OPEN_VERTICAL.label, MenuItems.OPEN_VERTICAL.id)
+		.add_menu(MenuItems.OPEN_HORIZONTAL.label, MenuItems.OPEN_HORIZONTAL.id)
+		.add_menu(MenuItems.NEXT_ITEM.label, MenuItems.NEXT_ITEM.id)
+		.add_menu(MenuItems.PREV_ITEM.label, MenuItems.PREV_ITEM.id)
+		.add_menu(MenuItems.QUIT.label, MenuItems.QUIT.id)
+	layout.add_breakline()
+	return layout
+end
+
+local function new_empty_layout()
+	local layout = LayoutBuilder.new()
+	layout
+		.add_breakline()
+		.add_title("No files yet.")
+		.add_breakline()
+		.add_menu(MenuItems.SAVE.label, MenuItems.SAVE.id)
+		.add_menu(MenuItems.QUIT.label, MenuItems.QUIT.id)
+		.add_breakline()
+
+	return add_keys_section(layout)
+end
+
 function M.create_layout()
 	local arrows = get_arrow_usecase.get_arrows()
+
+	if #arrows == 0 then
+		return new_empty_layout()
+	end
 
 	local layout = LayoutBuilder.new()
 	layout.add_breakline()
@@ -47,26 +93,8 @@ function M.create_layout()
 	layout.add_breakline()
 
 	if not config.getState("hide_handbook") then
-		layout
-			.add_menu(MenuItems.SAVE.label, MenuItems.SAVE.id)
-			.add_menu(MenuItems.REMOVE.label, MenuItems.REMOVE.id)
-			.add_menu(MenuItems.EDIT.label, MenuItems.EDIT.id)
-			.add_menu(MenuItems.CLEAR_ALL.label, MenuItems.CLEAR_ALL.id)
-			.add_menu(MenuItems.DELETE.label, MenuItems.DELETE.id)
-			.add_menu(MenuItems.OPEN_VERTICAL.label, MenuItems.OPEN_VERTICAL.id)
-			.add_menu(MenuItems.OPEN_HORIZONTAL.label, MenuItems.OPEN_HORIZONTAL.id)
-			.add_menu(MenuItems.NEXT_ITEM.label, MenuItems.NEXT_ITEM.id)
-			.add_menu(MenuItems.PREV_ITEM.label, MenuItems.PREV_ITEM.id)
-			.add_menu(MenuItems.QUIT.label, MenuItems.QUIT.id)
-
-		layout.add_breakline()
-
-		layout.add_title("Keys")
-		local line_keys = store.line_keys()
-		for index, value in ipairs(line_keys) do
-			local key = "line_key_" .. index
-			layout.add_line_key(value, key)
-		end
+		layout = add_handbook_menu(layout)
+		layout = add_keys_section(layout)
 	end
 
 	return layout

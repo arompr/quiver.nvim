@@ -41,7 +41,7 @@ function M.setup(opts)
 
 	local default_window_config = {
 		relative = "editor",
-		width = "auto",
+		width = 32,
 		height = "auto",
 		row = "auto",
 		col = "auto",

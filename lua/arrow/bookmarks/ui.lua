@@ -85,75 +85,19 @@ function M.create_layout()
 end
 
 function M.get_window_config()
-	local show_handbook = not (config.getState("hide_handbook"))
-	local filenames = store.filenames()
-	-- local parsedFileNames = ui_utils.format_filenames(filenames)
-	local separate_save_and_remove = config.getState("separate_save_and_remove")
-
-	local max_width = 0
-	if show_handbook then
-		max_width = 20
-		if separate_save_and_remove then
-			max_width = max_width + 2
-		end
-	end
-	-- for _, v in pairs(parsedFileNames) do
-	-- 	if #v > max_width then
-	-- 		max_width = #v
-	-- 	end
-	-- end
-
-	local width = max_width + 12
-	local height = #filenames + 2
-
-	if show_handbook then
-		height = height + 12
-		if separate_save_and_remove then
-			height = height + 1
-		end
-	end
-
-	local available_width = width - (2 * #Padding.m)
-	local wrapped_line_keys = ui_utils.wrap_str_to_length(config.getState("index_keys"), available_width)
-	store.set_line_keys(wrapped_line_keys)
-
-	height = height + #wrapped_line_keys
-
-	local current_config = {
-		width = width,
-		height = height,
-		row = math.ceil((vim.o.lines - height) / 2),
-		col = math.ceil((vim.o.columns - width) / 2),
+	local default_window_config = config.getState("window")
+	local default_width = default_window_config.width
+	local computed_height = #store.layout().get_all_items()
+	local new_window_config = {
+		width = default_width,
+		height = computed_height,
+		row = math.ceil((vim.o.lines - computed_height) / 2),
+		col = math.ceil((vim.o.columns - default_width) / 2),
 	}
+	local window_config = vim.tbl_deep_extend("force", config.getState("window"), new_window_config)
+	store.set_window_config(window_config)
 
-	local layout = M.create_layout()
-	store.set_layout(layout)
-	local is_empty = #store.arrows() == 0
-
-	if is_empty and show_handbook then
-		current_config.height = 5
-		current_config.width = 18
-	elseif is_empty then
-		current_config.height = 3
-		current_config.width = 18
-	end
-
-	local res = vim.tbl_deep_extend("force", current_config, config.getState("window"))
-
-	if res.width == "auto" then
-		res.width = current_config.width
-	end
-	if res.height == "auto" then
-		res.height = current_config.height
-	end
-	if res.row == "auto" then
-		res.row = current_config.row
-	end
-	if res.col == "auto" then
-		res.col = current_config.col
-	end
-
-	return res
+	return window_config
 end
 
 local function open_edit_mode()
@@ -240,11 +184,9 @@ function M.open_menu(bufnr)
 	mode_context.setup({ close_menu = close_menu })
 	mode_context.toggle_default_mode()
 
-	local window_config = M.get_window_config()
-	store.set_window_config(window_config)
 	local menuBuf = create_menu_buffer(filename)
 
-	local win = vim.api.nvim_open_win(menuBuf, true, window_config)
+	local win = vim.api.nvim_open_win(menuBuf, true, M.get_window_config())
 
 	local mappings = config.getState("mappings")
 
