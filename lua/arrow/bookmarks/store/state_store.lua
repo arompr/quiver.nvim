@@ -11,6 +11,7 @@ local state = {
 	line_keys = {},
 	layout = LayoutBuilder.new(),
 	window_config = {},
+	path_highlights = {},
 }
 
 ---@param arrows Arrow[]
@@ -61,6 +62,18 @@ function M.set_window_config(new_window_config)
 	state.window_config = new_window_config
 end
 
+function M.add_path_highlight(line, start_col, end_col)
+	table.insert(state.path_highlights, {
+		line = line,
+		start_col = start_col,
+		end_col = end_col,
+	})
+end
+
+function M.clear_path_highlights()
+	state.path_highlights = {}
+end
+
 ---@return Arrow[]
 M.arrows = function()
 	return state.arrows
@@ -69,6 +82,11 @@ end
 ---@return LayoutItem[]
 M.layout_arrows = function()
 	return state.layout.get_items_by_type(LayoutBuilder.TYPE.ARROW)
+end
+
+---@return LayoutItem[]
+M.layout_menu_items = function()
+	return state.layout.get_items_by_type(LayoutBuilder.TYPE.MENU)
 end
 
 M.filenames = function()
@@ -93,6 +111,10 @@ end
 
 M.window_config = function()
 	return state.window_config
+end
+
+function M.path_highlights()
+	return state.path_highlights
 end
 
 return M

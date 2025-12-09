@@ -29,6 +29,7 @@ function M.setup_keymaps(opts)
 	for key in assignable_keys:gmatch(".") do
 		vim.keymap.set("n", key, function()
 			local file = vim.b[buf].filename
+			print(file)
 			save_arrow_usecase.save_arrow(key, file)
 
 			ui.close_menu()

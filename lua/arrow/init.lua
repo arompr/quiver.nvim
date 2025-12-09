@@ -15,9 +15,10 @@ M.config = {}
 function M.setup(opts)
 	vim.cmd("highlight default link ArrowFileIndex CursorLineNr")
 	vim.cmd("highlight default link ArrowCurrentFile SpecialChar")
-	vim.cmd("highlight default link ArrowAction Character")
+	vim.cmd("highlight default link ArrowAction WarningMsg")
 	vim.cmd("highlight default link ArrowDeleteMode DiagnosticError")
-	vim.cmd("highlight default link ArrowSaveMode WarningMsg")
+	vim.cmd("highlight default link ArrowSaveMode Character")
+	vim.cmd("highlight default link ArrowFilePath Comment")
 
 	opts = opts or {}
 
@@ -41,12 +42,12 @@ function M.setup(opts)
 
 	local default_window_config = {
 		relative = "editor",
-		width = 32,
+		width = 50,
 		height = "auto",
 		row = "auto",
 		col = "auto",
 		style = "minimal",
-		border = "single",
+		border = "rounded",
 	}
 
 	config.setState("window", utils.join_two_keys_tables(default_window_config, opts.window or {}))
@@ -79,9 +80,12 @@ function M.setup(opts)
 	config.setState("leader_key", leader_key)
 	config.setState("buffer_leader_key", buffer_leader_key)
 	config.setState("always_show_path", opts.always_show_path or false)
+	-- config.setState("always_show_path", true)
 	config.setState("show_icons", opts.show_icons)
 	config.setState("index_keys", opts.index_keys or "123456789zcbnmZXVBNM,afghjklAFGHJKLwrtyuiopWRTYUIOP")
-	config.setState("hide_handbook", opts.hide_handbook or false)
+	-- config.setState("hide_handbook", opts.hide_handbook or false)
+	config.setState("hide_handbook", true)
+	config.setState("show_keys", true)
 	config.setState("hide_buffer_handbook", opts.hide_buffer_handbook or false)
 	config.setState("separate_by_branch", opts.separate_by_branch or false)
 	config.setState("global_bookmarks", opts.global_bookmarks or false)

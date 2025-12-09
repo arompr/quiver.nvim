@@ -5,6 +5,7 @@ local HighlightGroups = {
 	ACTION = "ArrowAction",
 	DELETE_MODE = "ArrowDeleteMode",
 	SAVE_MODE = "ArrowSaveMode",
+	PATH = "ArrowFilePath",
 }
 
 return HighlightGroups

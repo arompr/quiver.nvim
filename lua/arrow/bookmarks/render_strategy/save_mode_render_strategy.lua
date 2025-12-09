@@ -31,27 +31,61 @@ function M.apply_highlights(opts)
 	end
 
 	-- highlight available keys
+	-- local keys_lookup = get_available_keys_usecase.get_available_keys()
+	-- local line_keys = store.layout().get_items_by_type(LayoutBuilder.TYPE.LINE_KEY)
+	-- for _, line_key in ipairs(line_keys) do
+	-- 	local buf_line = vim.api.nvim_buf_get_lines(menuBuf, line_key.line, line_key.line + 1, false)[1]
+	--
+	-- 	if buf_line then
+	-- 		for col = 1, #line_key.label do
+	-- 			local key = line_key.label:sub(col, col)
+	-- 			if keys_lookup[key] then
+	-- 				local start_col = #Padding.m + (col - 1)
+	-- 				local end_col = start_col + 1
+	--
+	-- 				-- clamp end_col to line length
+	-- 				if start_col < #buf_line then
+	-- 					if end_col > #buf_line then
+	-- 						end_col = #buf_line
+	-- 					end
+	--
+	-- 					vim.api.nvim_buf_set_extmark(menuBuf, Namespaces.ACTION, line_key.line, start_col, {
+	-- 						end_col = end_col,
+	-- 						hl_group = HighlightGroups.SAVE_MODE,
+	-- 					})
+	-- 				end
+	-- 			end
+	-- 		end
+	-- 	end
+	-- end
+
 	local keys_lookup = get_available_keys_usecase.get_available_keys()
 	local line_keys = store.layout().get_items_by_type(LayoutBuilder.TYPE.LINE_KEY)
+
 	for _, line_key in ipairs(line_keys) do
 		local buf_line = vim.api.nvim_buf_get_lines(menuBuf, line_key.line, line_key.line + 1, false)[1]
 
 		if buf_line then
 			for col = 1, #line_key.label do
 				local key = line_key.label:sub(col, col)
-				if keys_lookup[key] then
-					local start_col = #Padding.m + (col - 1)
-					local end_col = start_col + 1
+				local start_col = #Padding.m + (col - 1)
+				local end_col = start_col + 1
 
-					-- clamp end_col to line length
-					if start_col < #buf_line then
-						if end_col > #buf_line then
-							end_col = #buf_line
-						end
+				-- clamp end_col to line length
+				if start_col < #buf_line then
+					if end_col > #buf_line then
+						end_col = #buf_line
+					end
 
+					if keys_lookup[key] then
 						vim.api.nvim_buf_set_extmark(menuBuf, Namespaces.ACTION, line_key.line, start_col, {
 							end_col = end_col,
 							hl_group = HighlightGroups.SAVE_MODE,
+						})
+					else
+						vim.api.nvim_buf_set_extmark(menuBuf, Namespaces.DELETE_MODE, line_key.line, start_col, {
+							end_col = end_col,
+							hl_group = HighlightGroups.DELETE_MODE,
 						})
 					end
 				end

@@ -277,4 +277,119 @@ function M.truncate_keep_ext_progressive(filename, max_width, min_prefix)
 	return filename:sub(1, max_width - ell_len) .. ellipsis
 end
 
+function M.truncate_left(filename, path, max_width)
+	local sep = "/"
+	local fullname = path .. sep .. filename
+
+	---------------------------------------------------------------------------
+	-- CASE 0: filename alone does not fit
+	---------------------------------------------------------------------------
+	if #filename > max_width then
+		local truncated = M.truncate_keep_ext_progressive(filename, max_width)
+		return truncated, 0, 0, 0, #truncated
+	end
+
+	---------------------------------------------------------------------------
+	-- CASE 1: full path fits
+	---------------------------------------------------------------------------
+	if #fullname <= max_width then
+		local p_start = 0
+		local p_end = #path + 1 -- include "/" in path
+		local f_start = p_end
+		local f_end = #fullname
+		return fullname, p_start, p_end, f_start, f_end
+	end
+
+	---------------------------------------------------------------------------
+	-- CASE 2: truncate left side of path
+	---------------------------------------------------------------------------
+	local prefix = "…/"
+	local fname_len = #filename
+	local remaining = max_width - fname_len - 1 -- 1 for "/"
+
+	-- Not enough space for directories
+	if remaining <= #prefix then
+		local line = prefix .. filename
+		local p_start = 0
+		local p_end = #prefix -- no slash here, prefix ends with slash
+		local f_start = p_end
+		local f_end = #line
+		return line, p_start, p_end, f_start, f_end
+	end
+
+	local parts = vim.split(path, "/")
+	local truncated_dir = ""
+
+	-- find rightmost slice that fits
+	for i = #parts, 1, -1 do
+		local candidate = table.concat(parts, "/", i)
+		if #candidate + #prefix <= remaining then
+			truncated_dir = prefix .. candidate
+			break
+		end
+	end
+
+	if truncated_dir == "" then
+		truncated_dir = prefix .. parts[#parts]
+	end
+
+	truncated_dir = truncated_dir .. "/"
+
+	local line = truncated_dir .. filename
+
+	---------------------------------------------------------------------------
+	-- FINAL CHECK: still too long -> truncate filename only
+	---------------------------------------------------------------------------
+	if #line > max_width then
+		local max_fname_len = max_width - #truncated_dir
+		local truncated_fname = M.truncate_keep_ext_progressive(filename, max_fname_len)
+
+		line = truncated_dir .. truncated_fname
+
+		local path_start = 0
+		local path_end = #truncated_dir -- slash included
+		local fname_start = path_end
+		local fname_end = #line
+
+		return line, path_start, path_end, fname_start, fname_end
+	end
+
+	local path_start = 0
+	local path_end = #truncated_dir
+	local fname_start = path_end
+	local fname_end = #line
+
+	return line, path_start, path_end, fname_start, fname_end
+end
+
+--- Split a full filepath into filename and directory path.
+--- Examples:
+---   "/a/b/c/init.lua" -> "init.lua", "a/b/c"
+---   "src/module/foo.js" -> "foo.js", "src/module"
+---   "file.txt" -> "file.txt", ""
+---@param filepath string
+---@return string filename
+---@return string path
+function M.split_filepath(filepath)
+	-- Normalize backslashes on Windows (same as Snacks)
+	filepath = filepath:gsub("\\", "/")
+
+	-- Trim trailing slash (Snacks does this to avoid empty segments)
+	if filepath:sub(-1) == "/" then
+		filepath = filepath:sub(1, -2)
+	end
+
+	-- Find the last slash using Lua pattern search
+	local slash = filepath:match("^.*()/")
+
+	if slash then
+		local filename = filepath:sub(slash + 1)
+		local directory = filepath:sub(1, slash - 1)
+		return filename, directory
+	else
+		-- No slash → only a filename
+		return filepath, ""
+	end
+end
+
 return M

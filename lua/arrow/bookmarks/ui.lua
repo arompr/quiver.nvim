@@ -12,7 +12,6 @@ local clear_arrows_usecase = require("arrow.bookmarks.usecase.clear_arrows_useca
 local go_to_previous_arrow_usecase = require("arrow.bookmarks.usecase.navigation.go_to_previous_arrow_usecase")
 local go_to_next_arrow_usecase = require("arrow.bookmarks.usecase.navigation.go_to_next_arrow_usecase")
 local get_arrow_usecase = require("arrow.bookmarks.usecase.get_arrow_usecase")
-local get_free_keys_usecase = require("arrow.bookmarks.usecase.get_available_keys_usecase")
 
 local mode_context = require("arrow.bookmarks.strategy.mode_context")
 
@@ -20,8 +19,6 @@ local store = require("arrow.bookmarks.store.state_store")
 
 local LayoutBuilder = require("arrow.bookmarks.layout.layout_builder")
 local MenuItems = require("arrow.menu_items")
-local Style = require("arrow.bookmarks.style")
-local Padding = Style.Padding
 
 local function close_menu()
 	local win = vim.fn.win_getid()
@@ -38,50 +35,6 @@ local function create_menu_buffer(filename)
 	mode_context.render_buffer(buf)
 
 	return buf
-end
-
-function M.create_layout()
-	local arrows = get_arrow_usecase.get_arrows()
-
-	local layout = LayoutBuilder.new()
-	layout.add_breakline()
-	for _, arrow in ipairs(arrows) do
-		local parsed_filename = arrow.filename
-		if parsed_filename:sub(1, 2) == "./" then
-			parsed_filename = parsed_filename:sub(3)
-		end
-
-		local fileName = ui_utils.format_filename(arrow.filename)
-
-		layout.add_arrow(fileName, arrow.key)
-	end
-
-	layout.add_breakline()
-
-	if not config.getState("hide_handbook") then
-		layout
-			.add_menu(MenuItems.SAVE.label, MenuItems.SAVE.id)
-			.add_menu(MenuItems.REMOVE.label, MenuItems.REMOVE.id)
-			.add_menu(MenuItems.EDIT.label, MenuItems.EDIT.id)
-			.add_menu(MenuItems.CLEAR_ALL.label, MenuItems.CLEAR_ALL.id)
-			.add_menu(MenuItems.DELETE.label, MenuItems.DELETE.id)
-			.add_menu(MenuItems.OPEN_VERTICAL.label, MenuItems.OPEN_VERTICAL.id)
-			.add_menu(MenuItems.OPEN_HORIZONTAL.label, MenuItems.OPEN_HORIZONTAL.id)
-			.add_menu(MenuItems.NEXT_ITEM.label, MenuItems.NEXT_ITEM.id)
-			.add_menu(MenuItems.PREV_ITEM.label, MenuItems.PREV_ITEM.id)
-			.add_menu(MenuItems.QUIT.label, MenuItems.QUIT.id)
-
-		layout.add_breakline()
-
-		layout.add_title("Keys")
-		local line_keys = store.line_keys()
-		for index, value in ipairs(line_keys) do
-			local key = "line_key_" .. index
-			layout.add_line_key(value, key)
-		end
-	end
-
-	return layout
 end
 
 function M.get_window_config()
