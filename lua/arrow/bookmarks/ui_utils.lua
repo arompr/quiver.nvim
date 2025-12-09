@@ -282,11 +282,24 @@ function M.truncate_left(filename, path, max_width)
 	local fullname = path .. sep .. filename
 
 	---------------------------------------------------------------------------
-	-- CASE 0: filename alone does not fit
+	-- CASE 0a: filename alone does not fit
 	---------------------------------------------------------------------------
 	if #filename > max_width then
 		local truncated = M.truncate_keep_ext_progressive(filename, max_width)
 		return truncated, 0, 0, 0, #truncated
+	end
+
+	---------------------------------------------------------------------------
+	-- CASE 0b: path is empty → only show filename, no leading slash
+	---------------------------------------------------------------------------
+	if path == "" then
+		-- filename already fits (otherwise CASE 0a would have triggered)
+		local line = filename
+		local p_start = 0
+		local p_end = 0
+		local f_start = 0
+		local f_end = #filename
+		return line, p_start, p_end, f_start, f_end
 	end
 
 	---------------------------------------------------------------------------
@@ -304,16 +317,17 @@ function M.truncate_left(filename, path, max_width)
 	-- CASE 2: truncate left side of path
 	---------------------------------------------------------------------------
 	local prefix = "…/"
+	local prefix_len = vim.fn.strdisplaywidth(prefix)
 	local fname_len = #filename
 	local remaining = max_width - fname_len - 1 -- 1 for "/"
 
 	-- Not enough space for directories
-	if remaining <= #prefix then
+	if remaining <= prefix_len then
 		local line = prefix .. filename
 		local p_start = 0
-		local p_end = #prefix -- no slash here, prefix ends with slash
+		local p_end = prefix_len -- no slash here, prefix ends with slash
 		local f_start = p_end
-		local f_end = #line
+		local f_end = vim.fn.strdisplaywidth(line)
 		return line, p_start, p_end, f_start, f_end
 	end
 
@@ -323,9 +337,8 @@ function M.truncate_left(filename, path, max_width)
 	-- find rightmost slice that fits
 	for i = #parts, 1, -1 do
 		local candidate = table.concat(parts, "/", i)
-		if #candidate + #prefix <= remaining then
+		if #candidate + prefix_len <= remaining then
 			truncated_dir = prefix .. candidate
-			break
 		end
 	end
 
@@ -340,7 +353,8 @@ function M.truncate_left(filename, path, max_width)
 	---------------------------------------------------------------------------
 	-- FINAL CHECK: still too long -> truncate filename only
 	---------------------------------------------------------------------------
-	if #line > max_width then
+	local line_len = vim.fn.strdisplaywidth(line)
+	if line_len > max_width then
 		local max_fname_len = max_width - #truncated_dir
 		local truncated_fname = M.truncate_keep_ext_progressive(filename, max_fname_len)
 
@@ -349,7 +363,7 @@ function M.truncate_left(filename, path, max_width)
 		local path_start = 0
 		local path_end = #truncated_dir -- slash included
 		local fname_start = path_end
-		local fname_end = #line
+		local fname_end = line_len
 
 		return line, path_start, path_end, fname_start, fname_end
 	end
@@ -357,7 +371,7 @@ function M.truncate_left(filename, path, max_width)
 	local path_start = 0
 	local path_end = #truncated_dir
 	local fname_start = path_end
-	local fname_end = #line
+	local fname_end = line_len
 
 	return line, path_start, path_end, fname_start, fname_end
 end

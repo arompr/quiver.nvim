@@ -121,6 +121,7 @@ function M.render_from_layout(buffer, setup_keymaps)
 
 	store.clear_highlights()
 	store.set_current_index(0)
+	store.clear_path_highlights()
 
 	for _, item in ipairs(items) do
 		local line = ""
@@ -138,7 +139,14 @@ function M.render_from_layout(buffer, setup_keymaps)
 			local prefix = Style.Padding.m .. item.key .. " "
 			local prefix_len = #prefix
 
-			local display, path_start, path_end = ui_utils.truncate_left(filename, path, width - (2 * #Style.Padding.m))
+			local icon_len = 0
+			if show_icons then
+				local icon = icons.get_file_icon(item.label)
+				icon_len = vim.fn.strdisplaywidth(icon) + 1
+			end
+
+			local display, path_start, path_end =
+				ui_utils.truncate_left(filename, path, width - (prefix_len + icon_len + #Style.Padding.m))
 			path_start = path_start + prefix_len
 			path_end = path_end + prefix_len
 
@@ -146,7 +154,7 @@ function M.render_from_layout(buffer, setup_keymaps)
 				local icon, hl = icons.get_file_icon(item.label)
 				store.add_highlight(hl)
 				display = icon .. " " .. display
-				local icon_len = #icon + 1
+				icon_len = #icon + 1
 
 				path_start = path_start + icon_len
 				path_end = path_end + icon_len
@@ -154,7 +162,6 @@ function M.render_from_layout(buffer, setup_keymaps)
 
 			line = prefix .. display
 			store.add_path_highlight(item.line, path_start, path_end)
-			-- line = string.format("%s%s %s", Style.Padding.m, item.key, display)
 		elseif item.type == LayoutBuilder.TYPE.MENU then
 			line = string.format("%s%s %s", Style.Padding.m, mappings[item.key], item.label)
 		elseif item.type == LayoutBuilder.TYPE.LINE_KEY then
