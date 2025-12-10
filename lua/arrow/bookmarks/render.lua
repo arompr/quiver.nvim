@@ -6,8 +6,6 @@ local default_mode_render_strategy = require("arrow.bookmarks.render_strategy.de
 local get_arrow_usecase = require("arrow.bookmarks.usecase.get_arrow_usecase")
 local LayoutBuilder = require("arrow.bookmarks.layout.layout_builder")
 
-local Namespaces = require("arrow.bookmarks.namespaces_enum")
-local HighlightGroups = require("arrow.highlight_groups_enum")
 local Style = require("arrow.bookmarks.style")
 local MenuItems = require("arrow.menu_items")
 
@@ -81,12 +79,6 @@ function M.create_layout()
 	layout.add_breakline()
 	for _, arrow in ipairs(arrows) do
 		local parsed_filename = arrow.filename
-		-- if parsed_filename:sub(1, 2) == "./" then
-		-- 	parsed_filename = parsed_filename:sub(3)
-		-- end
-
-		-- local fileName = ui_utils.format_filename(arrow.filename)
-
 		layout.add_arrow(parsed_filename, arrow.key)
 	end
 
@@ -200,7 +192,6 @@ function M.render_highlights(buffer)
 	local layout_arrows = store.layout_arrows()
 
 	vim.api.nvim_buf_clear_namespace(buffer, -1, 0, -1)
-	local menuBuf = buffer or vim.api.nvim_get_current_buf()
 
 	default_mode_render_strategy.apply_highlights({
 		buffer = buffer,

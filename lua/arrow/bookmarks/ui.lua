@@ -2,12 +2,11 @@ local M = {}
 
 local config = require("arrow.config")
 local utils = require("arrow.utils")
-local ui_utils = require("arrow.bookmarks.ui_utils")
 local git = require("arrow.git")
 
 local reorder_arrows_usecase = require("arrow.bookmarks.usecase.reorder_arrows_usecase")
 local remove_arrow_usecase = require("arrow.bookmarks.usecase.remove_arrow_usecase")
-local toggle_arrow_usecase = require("arrow.bookmarks.usecase.toggle_arrow_usecase")
+
 local clear_arrows_usecase = require("arrow.bookmarks.usecase.clear_arrows_usecase")
 local go_to_previous_arrow_usecase = require("arrow.bookmarks.usecase.navigation.go_to_previous_arrow_usecase")
 local go_to_next_arrow_usecase = require("arrow.bookmarks.usecase.navigation.go_to_next_arrow_usecase")
@@ -16,10 +15,6 @@ local get_arrow_usecase = require("arrow.bookmarks.usecase.get_arrow_usecase")
 local mode_context = require("arrow.bookmarks.strategy.mode_context")
 
 local store = require("arrow.bookmarks.store.state_store")
-
-local LayoutBuilder = require("arrow.bookmarks.layout.layout_builder")
-local MenuItems = require("arrow.menu_items")
-
 local function close_menu()
 	local win = vim.fn.win_getid()
 	vim.api.nvim_win_close(win, true)
@@ -143,8 +138,6 @@ function M.open_menu(bufnr)
 
 	local mappings = config.getState("mappings")
 
-	local separate_save_and_remove = config.getState("separate_save_and_remove")
-
 	local menuKeymapOpts = { noremap = true, silent = true, buffer = menuBuf, nowait = true }
 
 	vim.keymap.set("n", config.getState("leader_key"), close_menu, menuKeymapOpts)
@@ -166,32 +159,45 @@ function M.open_menu(bufnr)
 		open_edit_mode()
 	end, menuKeymapOpts)
 
-	if separate_save_and_remove then
-		vim.keymap.set("n", mappings.save, function()
-			filename = filename or utils.get_current_buffer_path()
-			if vim.b.arrow_current_mode == "save_mode" then
-				vim.b.arrow_current_mode = ""
-				mode_context.toggle_default_mode()
-			else
-				vim.b.arrow_current_mode = "save_mode"
-				mode_context.toggle_save_mode()
-			end
+	vim.keymap.set("n", mappings.save, function()
+		filename = filename or utils.get_current_buffer_path()
+		if vim.b.arrow_current_mode == "save_mode" then
+			vim.b.arrow_current_mode = ""
+			mode_context.toggle_default_mode()
+		else
+			vim.b.arrow_current_mode = "save_mode"
+			mode_context.toggle_save_mode()
+		end
 
-			mode_context.render_buffer(menuBuf)
-			mode_context.render_highlights(menuBuf)
-		end, menuKeymapOpts)
+		mode_context.render_buffer(menuBuf)
+		mode_context.render_highlights(menuBuf)
+	end, menuKeymapOpts)
 
-		vim.keymap.set("n", mappings.remove, function()
-			filename = filename or utils.get_current_buffer_path()
-			remove_arrow_usecase.remove_arrow(filename)
-			close_menu()
-		end, menuKeymapOpts)
-	else
-		vim.keymap.set("n", mappings.toggle, function()
-			toggle_arrow_usecase.toggle(filename)
-			close_menu()
-		end, menuKeymapOpts)
-	end
+	vim.keymap.set("n", mappings.remove, function()
+		filename = filename or utils.get_current_buffer_path()
+		remove_arrow_usecase.remove_arrow(filename)
+		close_menu()
+	end, menuKeymapOpts)
+
+	vim.keymap.set("n", mappings.save, function()
+		filename = filename or utils.get_current_buffer_path()
+		if vim.b.arrow_current_mode == "save_mode" then
+			vim.b.arrow_current_mode = ""
+			mode_context.toggle_default_mode()
+		else
+			vim.b.arrow_current_mode = "save_mode"
+			mode_context.toggle_save_mode()
+		end
+
+		mode_context.render_buffer(menuBuf)
+		mode_context.render_highlights(menuBuf)
+	end, menuKeymapOpts)
+
+	-- vim.keymap.set("n", mappings.remove, function()
+	-- 	filename = filename or utils.get_current_buffer_path()
+	-- 	remove_arrow_usecase.remove_arrow(filename)
+	-- 	close_menu()
+	-- end, menuKeymapOpts)
 
 	vim.keymap.set("n", mappings.clear_all_items, function()
 		clear_arrows_usecase.clear()
@@ -274,5 +280,4 @@ function M.open_menu(bufnr)
 	mode_context.render_highlights(menuBuf)
 end
 
--- Command to trigger the menu
 return M
