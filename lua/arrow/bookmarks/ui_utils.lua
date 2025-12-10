@@ -7,7 +7,6 @@ local M = {}
 ---@return string
 function M.format_filename(filename)
 	local full_path_list = config.getState("full_path_list")
-	local always_show_path = config.getState("always_show_path")
 
 	-- Detect whether it's a directory
 	local is_dir = vim.fn.isdirectory(filename) == 1
@@ -26,17 +25,13 @@ function M.format_filename(filename)
 
 		local location = vim.fn.fnamemodify(filename, ":h:h")
 
-		if always_show_path then
-			return string.format("%s/ . %s", folder_name, location)
-		else
-			return string.format("%s/", folder_name)
-		end
+		return string.format("%s/", folder_name)
 	else
 		local path = vim.fn.fnamemodify(filename, ":h")
 		local display_path = path
 
 		-- If this filename (without extension) is in the full_path_list, show path
-		if vim.tbl_contains(full_path_list, tail) or always_show_path then
+		if vim.tbl_contains(full_path_list, tail) then
 			return string.format("%s . %s", tail_with_extension, display_path)
 		else
 			return tail_with_extension
@@ -100,23 +95,15 @@ function M.format_filenames(filenames)
 
 				local location = vim.fn.fnamemodify(full_path, ":h:h")
 
-				if #name_occurrences[folder_name] > 1 or config.getState("always_show_path") then
+				if #name_occurrences[folder_name] > 1 then
 					table.insert(formatted_names, string.format("%s . %s", folder_name .. "/", location))
 				else
 					table.insert(formatted_names, string.format("%s", folder_name .. "/"))
 				end
 			else
-				if config.getState("always_show_path") then
-					table.insert(formatted_names, full_path .. " . /")
-				else
-					table.insert(formatted_names, full_path)
-				end
+				table.insert(formatted_names, full_path)
 			end
-		elseif
-			not (config.getState("always_show_path"))
-			and #name_occurrences[tail] == 1
-			and not (vim.tbl_contains(full_path_list, tail))
-		then
+		elseif #name_occurrences[tail] == 1 and not (vim.tbl_contains(full_path_list, tail)) then
 			table.insert(formatted_names, tail_with_extension)
 		else
 			local path = vim.fn.fnamemodify(full_path, ":h")

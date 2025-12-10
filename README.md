@@ -18,7 +18,6 @@ That’s why I created **quiver.nvim**:
 
 ## Todos
 - [] Add remove functionality
-- [] Map keys through usecases
 - [] Add toggle to next available key functionality
 - [] Add reassign to key functionality
 - [] Add assignable keys to menu
@@ -85,21 +84,15 @@ Just press the leader_key set on setup and follow you heart. (Is that easy)
     return vim.fn.stdpath("cache") .. "/arrow"
   end,
   mappings = {
-    edit = "e",
-    delete_mode = "d",
+    edit = "E",
+    delete_mode = "D",
     clear_all_items = "C",
-    toggle = "s",
-    open_vertical = "v",
-    open_horizontal = "-",
-    quit = "q",
-    remove = "x",
+    toggle = "S",
+    open_vertical = "V",
+    open_horizontal = "H",
+    quit = "Q",
     next_item = "]",
     prev_item = "["
-  },
-  custom_actions = {
-    open = function(target_file_name, current_file_name) end, -- target_file_name = file selected to be open, current_file_name = filename from where this was called
-    split_vertical = function(target_file_name, current_file_name) end,
-    split_horizontal = function(target_file_name, current_file_name) end,
   },
   window = { -- controls the appearance and position of an arrow window (see nvim_open_win() for all options)
     width = 50,
@@ -119,21 +112,13 @@ Just press the leader_key set on setup and follow you heart. (Is that easy)
     zindex = 10, --default 50
     treesitter_context = nil, -- it can be { line_shift_down = 2 }, currently not usable, for detail see https://github.com/otavioschwanck/arrow.nvim/pull/43#issue-2236320268
   },
-  separate_save_and_remove = false, -- if true, will remove the toggle and create the save/remove keymaps.
-  leader_key = ";",
+  leader_key = "m",
   save_key = "cwd", -- what will be used as root to save the bookmarks. Can be also `git_root` and `git_root_bare`.
   global_bookmarks = false, -- if true, arrow will save files globally (ignores separate_by_branch)
-  index_keys = "123456789zxcbnmZXVBNM,afghjklAFGHJKLwrtyuiopWRTYUIOP", -- keys mapped to bookmark index, i.e. 1st bookmark will be accessible by 1, and 12th - by c
-  full_path_list = { "update_stuff" } -- filenames on this list will ALWAYS show the file path too.
+  index_keys = "qwertyuiopasdfghjklzxcvbnnm", -- keys available to bookmark file
 }
 ```
 
-You can also map previous and next key:
-
-```lua
-vim.keymap.set("n", "H", require("arrow.persist").previous)
-vim.keymap.set("n", "L", require("arrow.persist").next)
-vim.keymap.set("n", "<C-s>", require("arrow.persist").toggle)
 ```
 
 ### Please, buy otavioschwanck, the original arrow dev a coffee
