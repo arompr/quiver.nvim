@@ -14,7 +14,8 @@ That’s why I created **quiver.nvim**:
 - This means that, like Harpoon, you can bind a file to a particular letter (`a`, `s`, `d`, etc.) while still benefiting from arrow.nvim’s single-UI experience.  
 - If you don’t care about fixed keys, then arrow.nvim is probably what you want to stick to.  
 
-<img width="546" height="445" alt="image" src="https://github.com/user-attachments/assets/4fe97bf0-9a6b-4495-b7ad-682bb2458006" />
+<img width="960" height="600" alt="image" src="https://github.com/user-attachments/assets/6bf848b7-cf8d-446d-b7ed-0c74519023bf" />
+
 
 ## Todos
 - [] Add remove functionality
