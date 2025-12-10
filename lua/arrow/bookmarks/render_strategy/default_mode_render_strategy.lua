@@ -4,7 +4,6 @@ local store = require("arrow.bookmarks.store.state_store")
 local Namespaces = require("arrow.bookmarks.namespaces_enum")
 local HighlightGroups = require("arrow.highlight_groups_enum")
 local Style = require("arrow.bookmarks.style")
-local LayoutBuilder = require("arrow.bookmarks.layout.layout_builder")
 
 local M = {}
 
