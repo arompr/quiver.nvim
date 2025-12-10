@@ -119,6 +119,7 @@ function M.render_from_layout(buffer, setup_keymaps)
 
 	local lines = {}
 
+	store.set_layout(new_empty_layout())
 	store.clear_highlights()
 	store.set_current_index(0)
 	store.clear_path_highlights()
