@@ -1,0 +1,7 @@
+{
+    "diagnostics.globals": [
+        "it",
+        "describe",
+        "before_each"
+    ]
+}

@@ -2,20 +2,23 @@ local M = {}
 
 local config = require("arrow.config")
 local utils = require("arrow.utils")
-local ui = require("arrow.ui")
-local persist = require("arrow.persist")
+local ui = require("arrow.bookmarks.ui")
 local buffer_persist = require("arrow.buffer_persist")
 local git = require("arrow.git")
 local commands = require("arrow.commands")
 local save_keys = require("arrow.save_keys")
+
+local Action = require("arrow.actions")
 
 M.config = {}
 
 function M.setup(opts)
 	vim.cmd("highlight default link ArrowFileIndex CursorLineNr")
 	vim.cmd("highlight default link ArrowCurrentFile SpecialChar")
-	vim.cmd("highlight default link ArrowAction Character")
+	vim.cmd("highlight default link ArrowAction WarningMsg")
 	vim.cmd("highlight default link ArrowDeleteMode DiagnosticError")
+	vim.cmd("highlight default link ArrowSaveMode Character")
+	vim.cmd("highlight default link ArrowFilePath Comment")
 
 	opts = opts or {}
 
@@ -25,26 +28,26 @@ function M.setup(opts)
 	}
 
 	local default_mappings = {
-		edit = "e",
-		delete_mode = "d",
-		clear_all_items = "C",
-		toggle = "s",
-		open_vertical = "v",
-		open_horizontal = "-",
-		quit = "q",
-		remove = "x",
-		next_item = "]",
-		prev_item = "[",
+		[Action.EDIT] = "E",
+		[Action.DELETE] = "D",
+		[Action.CLEAR_ALL] = "C",
+		[Action.SAVE] = "S",
+		[Action.OPEN_VERTICAL] = "V",
+		[Action.OPEN_HORIZONTAL] = "H",
+		[Action.QUIT] = "Q",
+		[Action.REMOVE] = "R",
+		[Action.NEXT_ITEM] = "]",
+		[Action.PREV_ITEM] = "[",
 	}
 
 	local default_window_config = {
 		relative = "editor",
-		width = "auto",
+		width = 50,
 		height = "auto",
 		row = "auto",
 		col = "auto",
 		style = "minimal",
-		border = "single",
+		border = "rounded",
 	}
 
 	config.setState("window", utils.join_two_keys_tables(default_window_config, opts.window or {}))
@@ -76,10 +79,10 @@ function M.setup(opts)
 	end)
 	config.setState("leader_key", leader_key)
 	config.setState("buffer_leader_key", buffer_leader_key)
-	config.setState("always_show_path", opts.always_show_path or false)
 	config.setState("show_icons", opts.show_icons)
-	config.setState("index_keys", opts.index_keys or "123456789zcbnmZXVBNM,afghjklAFGHJKLwrtyuiopWRTYUIOP")
+	config.setState("index_keys", opts.index_keys or "qwertyuiopasdfghjklzxcvbnm")
 	config.setState("hide_handbook", opts.hide_handbook or false)
+	config.setState("show_keys", opts.show_keys or true)
 	config.setState("hide_buffer_handbook", opts.hide_buffer_handbook or false)
 	config.setState("separate_by_branch", opts.separate_by_branch or false)
 	config.setState("global_bookmarks", opts.global_bookmarks or false)
@@ -91,7 +94,12 @@ function M.setup(opts)
 	config.setState("save_key_cached", config.getState("save_key")())
 
 	if leader_key then
-		vim.keymap.set("n", leader_key, ui.openMenu, { noremap = true, silent = true, nowait = true, desc = "Arrow File Mappings" })
+		vim.keymap.set(
+			"n",
+			leader_key,
+			ui.open_menu,
+			{ noremap = true, silent = true, nowait = true, desc = "Arrow File Mappings" }
+		)
 	end
 
 	if buffer_leader_key then
@@ -181,16 +189,13 @@ function M.setup(opts)
 	}
 
 	config.setState("mappings", utils.join_two_keys_tables(default_mappings, opts.mappings or {}))
-	config.setState("full_path_list", utils.join_two_arrays(default_full_path_list, opts.full_path_list or {}))
-
-	persist.load_cache_file()
+	config.setState("full_path_list", opts.full_path_list or default_full_path_list)
 
 	vim.api.nvim_create_augroup("arrow", { clear = true })
 
 	vim.api.nvim_create_autocmd({ "DirChanged", "SessionLoadPost" }, {
 		callback = function()
 			git.refresh_git_branch()
-			persist.load_cache_file()
 			config.setState("save_key_cached", config.getState("save_key")())
 		end,
 		desc = "load cache file on DirChanged",

@@ -363,7 +363,7 @@ function M.spawn_action_windows(call_buffer, bookmarks, line_nr, col_nr, call_wi
 		closeMenu(actions_buffer, call_buffer)
 
 		vim.schedule(function()
-			require("arrow.ui").openMenu()
+			require("arrow.bookmarks.ui").open_menu()
 		end)
 	end, menuKeymapOpts)
 

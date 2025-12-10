@@ -20,7 +20,7 @@ function M.refresh_git_branch()
 
 		if current_branch ~= M.get_git_branch() then
 			config.setState("current_branch", M.get_git_branch())
-			require("arrow.persist").load_cache_file()
+			require("arrow.persistence.cache_quiver").clear_arrows()
 		end
 	end
 
